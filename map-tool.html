@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map Tool - Arena Breakout Helper</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .map-workspace {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 1.5rem;
+            height: calc(100vh - 200px);
+        }
+
+        .map-sidebar {
+            background: #1a1a1a;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 2px solid #2a2a2a;
+            overflow-y: auto;
+        }
+
+        .map-canvas-container {
+            background: #0a0a0a;
+            border: 2px solid #2a2a2a;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #mapCanvas {
+            max-width: 100%;
+            max-height: 100%;
+            cursor: crosshair;
+            image-rendering: crisp-edges;
+        }
+
+        .tool-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .tool-section h3 {
+            font-size: 1rem;
+            color: #00d4ff;
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tool-button {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            background: #2a2a2a;
+            color: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tool-button:hover {
+            background: #0099ff;
+            border-color: #00d4ff;
+            transform: translateX(4px);
+        }
+
+        .tool-button.active {
+            background: #0099ff;
+            border-color: #00d4ff;
+        }
+
+        .marker-type {
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: #0a0a0a;
+            border-radius: 6px;
+            border-left: 3px solid var(--marker-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+
+        .marker-type:hover {
+            background: #1a1a1a;
+            transform: translateX(4px);
+        }
+
+        .marker-type.active {
+            background: #1a1a1a;
+            border-left-width: 5px;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 40px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .size-slider {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        .pins-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .pin-item {
+            padding: 0.75rem;
+            background: #0a0a0a;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid var(--pin-color);
+            cursor: pointer;
+        }
+
+        .pin-item:hover {
+            background: #1a1a1a;
+        }
+
+        .pin-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .pin-type {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: #00d4ff;
+        }
+
+        .pin-note {
+            font-size: 0.8rem;
+            color: #999;
+            word-wrap: break-word;
+        }
+
+        .delete-btn {
+            background: #ff4444;
+            border: none;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .delete-btn:hover {
+            background: #ff6666;
+        }
+
+        .file-input-label {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background: linear-gradient(135deg, #0099ff 0%, #0077cc 100%);
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 153, 255, 0.5);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            z-index: 10;
+        }
+
+        .zoom-btn {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #0099ff;
+            border-color: #00d4ff;
+        }
+
+        .map-info {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: rgba(26, 26, 26, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 2px solid #333;
+            font-size: 0.85rem;
+            color: #999;
+        }
+
+        .no-map-message {
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+        }
+
+        .no-map-message h3 {
+            color: #999;
+            margin-bottom: 1rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #0099ff;
+        }
+
+        .opacity-slider {
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🗺️ Maps</h1>
+            <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                <button class="tab-btn" onclick="window.location.href='index.html'">← Back to Helper</button>
+                <button class="tab-btn" id="checkUpdatesBtnMap">⬇️ Check for Updates</button>
+            </div>
+        </header>
+
+        <main>
+            <div id="updateBanner" class="update-banner" style="display:none;">
+                <div>
+                    <strong>Update available</strong>
+                    <span id="updateBannerText" style="color:#ccc; margin-left:0.5rem;"></span>
+                </div>
+                <div class="actions">
+                    <button class="tab-btn" id="bannerInstallBtn">Install</button>
+                    <button class="tab-btn" id="bannerDismissBtn" style="background:#1a1a1a; border-color:#333;">Dismiss</button>
+                </div>
+            </div>
+            <div class="map-workspace">
+                <!-- Sidebar Tools -->
+                <div class="map-sidebar">
+                    <!-- Load Map Section -->
+                    <div class="tool-section">
+                        <h3>📁 Map Image</h3>
+                        <label for="mapUpload" class="file-input-label">
+                            📤 Load Map Image
+                        </label>
+                        <input type="file" id="mapUpload" class="file-input" accept="image/*">
+                        <button class="tool-button" onclick="clearMap()" style="margin-top: 0.5rem;">
+                            🗑️ Clear Map
+                        </button>
+                    </div>
+
+                    <!-- Drawing Tools -->
+                    <div class="tool-section">
+                        <h3>✏️ Tools</h3>
+                        <button class="tool-button" id="toolPin" onclick="setTool('pin')">
+                            📍 Add Pin
+                        </button>
+                        <button class="tool-button" id="toolDraw" onclick="setTool('draw')">
+                            ✏️ Draw
+                        </button>
+                        <button class="tool-button" id="toolErase" onclick="setTool('erase')">
+                            🧹 Erase
+                        </button>
+                        <button class="tool-button" onclick="clearDrawing()">
+                            🔄 Clear Drawings
+                        </button>
+                        <button class="tool-button" onclick="clearAllPins()">
+                            🗑️ Clear All Pins
+                        </button>
+                    </div>
+
+                    <!-- Pin Types -->
+                    <div class="tool-section" id="pinTypesSection" style="display: none;">
+                        <h3>📍 Pin Type</h3>
+                        <div class="marker-type active" style="--marker-color: #ff4444;" onclick="setMarkerType('Danger', '#ff4444')">
+                            ⚠️ Danger Zone
+                        </div>
+                        <div class="marker-type" style="--marker-color: #44ff44;" onclick="setMarkerType('Loot', '#44ff44')">
+                            💎 Loot
+                        </div>
+                        <div class="marker-type" style="--marker-color: #4444ff;" onclick="setMarkerType('Spawn', '#4444ff')">
+                            🚁 Spawn Point
+                        </div>
+                        <div class="marker-type" style="--marker-color: #ffff44;" onclick="setMarkerType('Objective', '#ffff44')">
+                            🎯 Objective
+                        </div>
+                        <div class="marker-type" style="--marker-color: #ff44ff;" onclick="setMarkerType('Cover', '#ff44ff')">
+                            🛡️ Cover
+                        </div>
+                        <div class="marker-type" style="--marker-color: #44ffff;" onclick="setMarkerType('Vantage', '#44ffff')">
+                            👁️ Vantage Point
+                        </div>
+                        <div class="marker-type" style="--marker-color: #ffffff;" onclick="setMarkerType('Custom', '#ffffff')">
+                            ⭐ Custom
+                        </div>
+                    </div>
+
+                    <!-- Drawing Settings -->
+                    <div class="tool-section" id="drawSettingsSection" style="display: none;">
+                        <h3>🎨 Drawing Settings</h3>
+                        <label style="color: #999; font-size: 0.85rem; display: block; margin-bottom: 0.5rem;">
+                            Color:
+                        </label>
+                        <input type="color" id="drawColor" class="color-picker" value="#0099ff">
+                        
+                        <label style="color: #999; font-size: 0.85rem; display: block; margin-top: 1rem; margin-bottom: 0.5rem;">
+                            Brush Size: <span id="brushSizeValue">5</span>px
+                        </label>
+                        <input type="range" id="brushSize" class="size-slider" min="1" max="20" value="5">
+                        
+                        <label style="color: #999; font-size: 0.85rem; display: block; margin-top: 1rem; margin-bottom: 0.5rem;">
+                            Opacity: <span id="opacityValue">80</span>%
+                        </label>
+                        <input type="range" id="drawOpacity" class="opacity-slider" min="10" max="100" value="80">
+                    </div>
+
+                    <!-- Pins List -->
+                    <div class="tool-section">
+                        <h3>📍 Pins (<span id="pinCount">0</span>)</h3>
+                        <div class="pins-list" id="pinsList">
+                            <p style="color: #666; font-size: 0.85rem; text-align: center;">No pins yet</p>
+                        </div>
+                    </div>
+
+                    <!-- Save/Load -->
+                    <div class="tool-section">
+                        <h3>💾 Save/Load</h3>
+                        <button class="tool-button" onclick="saveMapData()">
+                            💾 Save Map
+                        </button>
+                        <button class="tool-button" onclick="exportMapImage()">
+                            📥 Export as Image
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Map Canvas Area -->
+                <div class="map-canvas-container">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomIn()">+</button>
+                        <button class="zoom-btn" onclick="zoomOut()">−</button>
+                        <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+                    </div>
+                    
+                    <div class="map-info">
+                        <span id="toolInfo">Select a tool to get started</span>
+                    </div>
+
+                    <div class="no-map-message" id="noMapMessage">
+                        <h3>📁 No Map Loaded</h3>
+                        <p>Click "Load Map Image" to upload a map screenshot</p>
+                        <p style="margin-top: 1rem; font-size: 0.85rem;">
+                            Tip: Press F12 in-game to take screenshots
+                        </p>
+                    </div>
+
+                    <canvas id="mapCanvas" style="display: none;"></canvas>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Interactive Map Tool | Draw routes, add pins, take notes | All data saved locally | <span id="versionTag">v1.0</span></p>
+        </footer>
+    </div>
+
+    <script src="map-tool.js"></script>
+</body>
+</html>
+

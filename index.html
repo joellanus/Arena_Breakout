@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena Breakout Helper</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Arena Breakout Helper</h1>
+            <div class="tab-navigation">
+                <button class="tab-btn active" data-tab="keybinds">Keybinds</button>
+                <button class="tab-btn" onclick="window.location.href='map-tool.html'" style="background: linear-gradient(135deg, #ff9900 0%, #ff6600 100%); border-color: #ffaa00;">🗺️ Maps</button>
+                <button class="tab-btn" id="checkUpdatesBtn" style="margin-left: auto;">⬇️ Check for Updates</button>
+            </div>
+        </header>
+
+        <main>
+            <div id="updateBanner" class="update-banner" style="display:none;">
+                <div>
+                    <strong>Update available</strong>
+                    <span id="updateBannerText" style="color:#ccc; margin-left:0.5rem;"></span>
+                </div>
+                <div class="actions">
+                    <button class="tab-btn" id="bannerInstallBtn">Install</button>
+                    <button class="tab-btn" id="bannerDismissBtn" style="background:#1a1a1a; border-color:#333;">Dismiss</button>
+                </div>
+            </div>
+            <!-- Keybinds Section -->
+            <section class="tab-content active" id="keybinds">
+                <h2>Keybinds</h2>
+                <div class="grid">
+                    <div class="card">
+                        <h3>Movement</h3>
+                        <div class="keybind-list">
+                            <div class="keybind-item">
+                                <span class="key">W A S D</span>
+                                <span class="description">Move</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">Shift</span>
+                                <span class="description">Sprint</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">Ctrl</span>
+                                <span class="description">Crouch</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">Space</span>
+                                <span class="description">Jump</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">C</span>
+                                <span class="description">Prone</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Combat</h3>
+                        <div class="keybind-list">
+                            <div class="keybind-item">
+                                <span class="key">LMB</span>
+                                <span class="description">Fire</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">RMB</span>
+                                <span class="description">Aim</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">R</span>
+                                <span class="description">Reload</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">G</span>
+                                <span class="description">Grenade</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">V</span>
+                                <span class="description">Melee</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Tactical</h3>
+                        <div class="keybind-list">
+                            <div class="keybind-item">
+                                <span class="key">Q</span>
+                                <span class="description">Lean Left</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">E</span>
+                                <span class="description">Lean Right</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">F</span>
+                                <span class="description">Interact</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">X</span>
+                                <span class="description">Prone/Crouch Toggle</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">B</span>
+                                <span class="description">Fire Mode</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Items & Interface</h3>
+                        <div class="keybind-list">
+                            <div class="keybind-item">
+                                <span class="key">1-5</span>
+                                <span class="description">Weapon Slots</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">Tab</span>
+                                <span class="description">Inventory</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">M</span>
+                                <span class="description">Map</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">I</span>
+                                <span class="description">Character Info</span>
+                            </div>
+                            <div class="keybind-item">
+                                <span class="key">Esc</span>
+                                <span class="description">Menu</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            
+        </main>
+
+        <footer>
+            <p>Arena Breakout Helper | Press F11 for fullscreen | Customize this helper by editing the HTML | <span id="versionTag">v1.0</span></p>
+        </footer>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+

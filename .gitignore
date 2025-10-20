@@ -1,0 +1,19 @@
+# Build artifacts
+/dist/
+*.zip
+
+# VCS and tool metadata
+/.git/
+/.cursor/
+/.agent-tools/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and env
+*.log
+.env
+
+# JS tooling (future-proofing)
+/node_modules/

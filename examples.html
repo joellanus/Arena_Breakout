@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feature Examples - Arena Breakout Helper</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Additional styles for examples */
+        .example-section {
+            margin-bottom: 3rem;
+        }
+
+        .timer-display {
+            font-size: 3rem;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 2px solid #0099ff;
+            color: #00d4ff;
+            margin: 1rem 0;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .timer-btn {
+            background: linear-gradient(135deg, #0099ff 0%, #0077cc 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .timer-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 153, 255, 0.5);
+        }
+
+        .notes-area {
+            width: 100%;
+            min-height: 200px;
+            background: #0a0a0a;
+            color: #fff;
+            border: 2px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+        }
+
+        .notes-area:focus {
+            outline: none;
+            border-color: #0099ff;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            background: #0a0a0a;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #0099ff;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 1rem;
+            cursor: pointer;
+            accent-color: #0099ff;
+        }
+
+        .checklist-item.completed {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .stat-box {
+            background: #0a0a0a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid #2a2a2a;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            color: #00d4ff;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #999;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Feature Examples</h1>
+            <p style="color: #999; margin-top: 0.5rem;">Copy these examples into your main index.html to add new features</p>
+            <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                <button class="tab-btn" onclick="window.location.href='index.html'">← Back to Helper</button>
+                <button class="tab-btn" onclick="window.location.href='map-tool.html'" style="background: linear-gradient(135deg, #ff9900 0%, #ff6600 100%);">🗺️ Interactive Map Tool</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Mission Timer Example -->
+            <section class="example-section">
+                <h2>🕐 Mission Timer</h2>
+                <div class="card">
+                    <h3>Session Timer</h3>
+                    <div class="timer-display" id="timerDisplay">00:00:00</div>
+                    <div class="timer-controls">
+                        <button class="timer-btn" onclick="startTimer()">▶️ Start</button>
+                        <button class="timer-btn" onclick="pauseTimer()">⏸️ Pause</button>
+                        <button class="timer-btn" onclick="resetTimer()">🔄 Reset</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Notes System Example -->
+            <section class="example-section">
+                <h2>📝 Quick Notes</h2>
+                <div class="card">
+                    <h3>Game Notes (Auto-saved)</h3>
+                    <textarea class="notes-area" id="gameNotes" placeholder="Type your notes here... They'll be saved automatically."></textarea>
+                    <p style="color: #666; margin-top: 0.5rem; font-size: 0.9rem;">
+                        💾 Notes are automatically saved to your browser
+                    </p>
+                </div>
+            </section>
+
+            <!-- Checklist Example -->
+            <section class="example-section">
+                <h2>✅ Mission Checklist</h2>
+                <div class="card">
+                    <h3>Objectives</h3>
+                    <div id="checklistContainer">
+                        <div class="checklist-item">
+                            <input type="checkbox" id="obj1" onchange="toggleChecklistItem(this)">
+                            <label for="obj1">Reach first checkpoint</label>
+                        </div>
+                        <div class="checklist-item">
+                            <input type="checkbox" id="obj2" onchange="toggleChecklistItem(this)">
+                            <label for="obj2">Clear enemy compound</label>
+                        </div>
+                        <div class="checklist-item">
+                            <input type="checkbox" id="obj3" onchange="toggleChecklistItem(this)">
+                            <label for="obj3">Retrieve intel</label>
+                        </div>
+                        <div class="checklist-item">
+                            <input type="checkbox" id="obj4" onchange="toggleChecklistItem(this)">
+                            <label for="obj4">Reach extraction point</label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Stats Tracker Example -->
+            <section class="example-section">
+                <h2>📊 Session Stats</h2>
+                <div class="card">
+                    <h3>Today's Statistics</h3>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <span class="stat-value" id="statMissions">0</span>
+                            <span class="stat-label">Missions</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="statKills">0</span>
+                            <span class="stat-label">Kills</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="statDeaths">0</span>
+                            <span class="stat-label">Deaths</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-value" id="statKDR">0.00</span>
+                            <span class="stat-label">K/D Ratio</span>
+                        </div>
+                    </div>
+                    <div class="timer-controls" style="margin-top: 1.5rem;">
+                        <button class="timer-btn" onclick="incrementStat('statMissions')">+ Mission</button>
+                        <button class="timer-btn" onclick="incrementStat('statKills')">+ Kill</button>
+                        <button class="timer-btn" onclick="incrementStat('statDeaths')">+ Death</button>
+                        <button class="timer-btn" onclick="resetStats()">Reset All</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Code Example -->
+            <section class="example-section">
+                <h2>💻 Implementation Code</h2>
+                <div class="card">
+                    <h3>Copy & Paste Ready</h3>
+                    <p style="margin-bottom: 1rem; color: #999;">
+                        All the JavaScript code for these features is in this file. 
+                        View the page source to see how they work, then copy what you need into your main helper.
+                    </p>
+                    <ul class="tip-list">
+                        <li>Timer: Tracks session time with start/pause/reset</li>
+                        <li>Notes: Auto-saves to localStorage</li>
+                        <li>Checklist: Visual progress tracking</li>
+                        <li>Stats: Track your performance metrics</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>These are example features you can add to your helper. View source to see the code!</p>
+        </footer>
+    </div>
+
+    <script>
+        // ========================================
+        // TIMER FUNCTIONALITY
+        // ========================================
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let timerRunning = false;
+
+        function startTimer() {
+            if (!timerRunning) {
+                timerRunning = true;
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    updateTimerDisplay();
+                    localStorage.setItem('timerSeconds', timerSeconds);
+                }, 1000);
+            }
+        }
+
+        function pauseTimer() {
+            if (timerRunning) {
+                timerRunning = false;
+                clearInterval(timerInterval);
+            }
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            timerSeconds = 0;
+            updateTimerDisplay();
+            localStorage.removeItem('timerSeconds');
+        }
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(timerSeconds / 3600);
+            const minutes = Math.floor((timerSeconds % 3600) / 60);
+            const seconds = timerSeconds % 60;
+            
+            const display = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timerDisplay').textContent = display;
+        }
+
+        // Restore timer on load
+        const savedTime = localStorage.getItem('timerSeconds');
+        if (savedTime) {
+            timerSeconds = parseInt(savedTime);
+            updateTimerDisplay();
+        }
+
+        // ========================================
+        // NOTES FUNCTIONALITY
+        // ========================================
+        const notesArea = document.getElementById('gameNotes');
+        
+        // Load saved notes
+        notesArea.value = localStorage.getItem('gameNotes') || '';
+        
+        // Auto-save notes
+        notesArea.addEventListener('input', () => {
+            localStorage.setItem('gameNotes', notesArea.value);
+        });
+
+        // ========================================
+        // CHECKLIST FUNCTIONALITY
+        // ========================================
+        function toggleChecklistItem(checkbox) {
+            const item = checkbox.parentElement;
+            if (checkbox.checked) {
+                item.classList.add('completed');
+            } else {
+                item.classList.remove('completed');
+            }
+            saveChecklistState();
+        }
+
+        function saveChecklistState() {
+            const checkboxes = document.querySelectorAll('#checklistContainer input[type="checkbox"]');
+            const states = Array.from(checkboxes).map(cb => cb.checked);
+            localStorage.setItem('checklistStates', JSON.stringify(states));
+        }
+
+        function loadChecklistState() {
+            const saved = localStorage.getItem('checklistStates');
+            if (saved) {
+                const states = JSON.parse(saved);
+                const checkboxes = document.querySelectorAll('#checklistContainer input[type="checkbox"]');
+                checkboxes.forEach((cb, index) => {
+                    if (states[index]) {
+                        cb.checked = true;
+                        cb.parentElement.classList.add('completed');
+                    }
+                });
+            }
+        }
+
+        // Load checklist on page load
+        loadChecklistState();
+
+        // ========================================
+        // STATS FUNCTIONALITY
+        // ========================================
+        function incrementStat(statId) {
+            const element = document.getElementById(statId);
+            let value = parseInt(element.textContent);
+            value++;
+            element.textContent = value;
+            saveStat(statId, value);
+            
+            // Update K/D ratio
+            if (statId === 'statKills' || statId === 'statDeaths') {
+                updateKDR();
+            }
+        }
+
+        function updateKDR() {
+            const kills = parseInt(document.getElementById('statKills').textContent);
+            const deaths = parseInt(document.getElementById('statDeaths').textContent);
+            const kdr = deaths === 0 ? kills.toFixed(2) : (kills / deaths).toFixed(2);
+            document.getElementById('statKDR').textContent = kdr;
+            localStorage.setItem('statKDR', kdr);
+        }
+
+        function saveStat(statId, value) {
+            localStorage.setItem(statId, value);
+        }
+
+        function loadStats() {
+            ['statMissions', 'statKills', 'statDeaths', 'statKDR'].forEach(statId => {
+                const saved = localStorage.getItem(statId);
+                if (saved) {
+                    document.getElementById(statId).textContent = saved;
+                }
+            });
+        }
+
+        function resetStats() {
+            if (confirm('Reset all statistics?')) {
+                ['statMissions', 'statKills', 'statDeaths', 'statKDR'].forEach(statId => {
+                    document.getElementById(statId).textContent = statId === 'statKDR' ? '0.00' : '0';
+                    localStorage.removeItem(statId);
+                });
+            }
+        }
+
+        // Load stats on page load
+        loadStats();
+
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        console.log('Example features loaded! These can be copied to your main helper.');
+    </script>
+</body>
+</html>
+
