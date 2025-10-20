@@ -101,3 +101,7 @@ Notes:
 
 Personal use permitted. Customize and share with your squad.
 
+## Development
+
+See `DEVELOPMENT.md` for workflows, checklists, and release steps.
+
