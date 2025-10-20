@@ -29,6 +29,9 @@ let visibleBaseCategories = new Set();
 let authorMode = false;
 let draftBasePins = [];
 
+// Dev mode flag (not persisted by default)
+let devMode = false;
+
 // Debug: temporary click markers for authoring visibility
 let clickMarkers = [];
 function addClickMarker(x, y) {
@@ -888,10 +891,12 @@ async function exportBasePinsJSON() {
     try {
         // Merge draft pins into base pins grouped by category
         const merged = (basePins || []).concat(draftBasePins || []);
+        const usedCats = new Set((baseCategories && baseCategories.length ? baseCategories : ['Keys','Spawns','Extracts']));
+        merged.forEach(p => usedCats.add(p.category || p.type || 'Misc'));
         const payload = {
             map: selectedMap,
             image: `assets/maps/${getMapSlug(selectedMap)}.png`,
-            categories: baseCategories.length ? baseCategories : ['Keys','Spawns','Extracts'],
+            categories: Array.from(usedCats),
             basePins: merged
         };
         // Request folder: ask for the project root (containing index.html)
@@ -982,6 +987,17 @@ function logCanvasInfo(prefix, x, y) {
             }
         });
         container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
+    });
+})();
+
+(function wireDevModeToggle(){
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && (e.key.toLowerCase() === 'd')) {
+            devMode = !devMode;
+            const authorSection = document.getElementById('authorSection');
+            if (authorSection) authorSection.style.display = devMode ? 'block' : 'none';
+            try { console.log('Dev mode:', devMode); } catch(_) {}
+        }
     });
 })();
 
