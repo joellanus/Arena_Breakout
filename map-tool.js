@@ -91,6 +91,52 @@ function drawClickMarkers() {
     });
 })();
 
+// Author image attach (copies into assets/maps/images/ via FS Access and assigns relative path)
+(function wireAuthorImageAttach(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const attachBtn = document.getElementById('attachImageBtn');
+        const fileInput = document.getElementById('authorImageInput');
+        if (!attachBtn || !fileInput) return;
+        attachBtn.addEventListener('click', async () => {
+            if (!authorMode || draftBasePins.length === 0) { alert('Create a draft pin first.'); return; }
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            try {
+                const supportsFS = 'showDirectoryPicker' in window;
+                if (!supportsFS) { alert('Use a Chromium-based browser to attach images.'); return; }
+                alert('Select the project folder (contains index.html). The image will be copied to assets/maps/images/.');
+                const dirHandle = await window.showDirectoryPicker();
+                const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
+                if (!hasIndex) {
+                    const proceed = confirm('Selected folder does not contain index.html. Continue anyway?');
+                    if (!proceed) return;
+                }
+                const assetsDir = await dirHandle.getDirectoryHandle('assets', { create: true });
+                const mapsDir = await assetsDir.getDirectoryHandle('maps', { create: true });
+                const imagesDir = await mapsDir.getDirectoryHandle('images', { create: true });
+                const targetName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+                const fileHandle = await imagesDir.getFileHandle(targetName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                // Assign relative path to last draft pin
+                const last = draftBasePins[draftBasePins.length - 1];
+                last.image = `assets/maps/images/${targetName}`;
+                renderCanvas();
+                alert('Image attached to the last draft pin. Remember to Export JSON and commit the image.');
+            } catch (err) {
+                console.error(err);
+                alert('Attach failed: ' + err.message);
+            } finally {
+                fileInput.value = '';
+            }
+        });
+    });
+})();
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     canvas = document.getElementById('mapCanvas');
