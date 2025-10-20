@@ -318,28 +318,17 @@
                         <div class="marker-type active" style="--marker-color: #ff4444;" onclick="setMarkerType('Danger', '#ff4444')">
                             ⚠️ Danger Zone
                         </div>
-                        <div class="marker-type" style="--marker-color: #ffaa00;" onclick="setMarkerType('Keys', '#ffaa00')">
-                            🔑 Keys
-                        </div>
-                        <div class="marker-type" style="--marker-color: #44ff44;" onclick="setMarkerType('Extracts', '#44ff44')">
-                            🚪 Extracts
-                        </div>
                         <div class="marker-type" style="--marker-color: #44ff44;" onclick="setMarkerType('Loot', '#44ff44')">
                             💎 Loot
-                        </div>
-                        <div class="marker-type" style="--marker-color: #4444ff;" onclick="setMarkerType('Spawn', '#4444ff')">
-                            🚁 Spawn Point
-                        </div>
-                        <div class="marker-type" style="--marker-color: #ffff44;" onclick="setMarkerType('Objective', '#ffff44')">
-                            🎯 Objective
-                        </div>
-                        <div class="marker-type" style="--marker-color: #ff44ff;" onclick="setMarkerType('Cover', '#ff44ff')">
-                            🛡️ Cover
                         </div>
                         <div class="marker-type" style="--marker-color: #44ffff;" onclick="setMarkerType('Vantage', '#44ffff')">
                             👁️ Vantage Point
                         </div>
-                        <div class="marker-type" style="--marker-color: #ffffff;" onclick="setMarkerType('Custom', '#ffffff')">
+                        <!-- Hidden from users; dev can still use via dev mode -->
+                        <div class="marker-type" style="--marker-color: #ffff44; display:none;" onclick="setMarkerType('Objective', '#ffff44')">
+                            🎯 Objective
+                        </div>
+                        <div class="marker-type" style="--marker-color: #ffffff; display:none;" onclick="setMarkerType('Custom', '#ffffff')">
                             ⭐ Custom
                         </div>
                     </div>

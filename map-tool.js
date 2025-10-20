@@ -630,6 +630,7 @@ function renderCanvas() {
 
 // Draw base pins (shipped)
 function drawBasePins() {
+    if (!devMode) return; // hide shipped base pins for end users
     if (!basePins || basePins.length === 0) return;
     const categoryColor = {
         'Keys': '#ffaa00',
@@ -904,7 +905,7 @@ function loadBaseDataForSelectedMap() {
         } else {
             visibleBaseCategories = new Set(baseCategories);
         }
-        if (section && togglesRoot && baseCategories.length > 0) {
+        if (devMode && section && togglesRoot && baseCategories.length > 0) {
             section.style.display = 'block';
             baseCategories.forEach(cat => {
                 const id = 'bl-' + cat.replace(/[^a-z0-9]/ig, '').toLowerCase();
@@ -999,15 +1000,15 @@ function logCanvasInfo(prefix, x, y) {
         const pickNearestPin = (mx, my) => {
             let best = null; let bestD2 = Infinity;
             const consider = [];
-            // Include draft base pins
-            (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '' }));
-            // Include base shipped pins (respect visibility)
-            (basePins || []).forEach(p => {
+            // Include draft base pins (dev only)
+            if (devMode) (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '' }));
+            // Include base shipped pins (respect visibility, dev only)
+            if (devMode) (basePins || []).forEach(p => {
                 const cat = p.category || p.type || 'Misc';
                 if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
                 consider.push({ x:p.x, y:p.y, title:p.label || cat, notes:p.notes || '', image:p.image || '' });
             });
-            // Include user pins
+            // Include user pins (always allowed types)
             (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'' }));
             consider.forEach(p => {
                 const dx = p.x - mx, dy = p.y - my; const d2 = dx*dx + dy*dy;
