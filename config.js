@@ -4,7 +4,7 @@
 const CONFIG = {
     // App Settings
     appName: "Arena Breakout Helper",
-    version: "1.0",
+    version: "1.1",
     update: {
         // Replace OWNER and REPO after pushing to GitHub
         manifestUrl: "https://raw.githubusercontent.com/joellanus/Arena_Breakout/main/version.json",
