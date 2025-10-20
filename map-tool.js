@@ -52,6 +52,7 @@ let draftBasePins = [];
                 if (draftBasePins.length === 0) return;
                 if (confirm('Clear all draft base pins?')) {
                     draftBasePins = [];
+                    updateDraftCounter();
                     renderCanvas();
                 }
             });
@@ -312,6 +313,7 @@ addPin = function(x, y) {
         const label = prompt('Label for this base pin (optional):', '');
         draftBasePins.push({ x, y, category, label: label || '' });
         try { console.log('Draft base pin added', { x, y, category, label }); } catch (_) {}
+        updateDraftCounter();
         renderCanvas();
         return;
     }
@@ -469,6 +471,7 @@ function renderCanvas() {
     });
     // Finally draw any draft base pins above everything
     drawDraftBasePinsOnTop();
+    updateDraftCounter(); // Update counter after rendering
 }
 
 // Draw base and draft pins
@@ -491,28 +494,32 @@ function drawDraftBasePinsOnTop() {
     };
     draftBasePins.forEach(pin => {
         const color = categoryColor[pin.category] || '#cccccc';
-        // Outer bright ring
+        // Outer glow
+        ctx.save();
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.arc(pin.x, pin.y, 16, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.arc(pin.x, pin.y, 18, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.fill();
+        ctx.restore();
         // Inner circle
         ctx.beginPath();
-        ctx.arc(pin.x, pin.y, 12, 0, Math.PI * 2);
+        ctx.arc(pin.x, pin.y, 14, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
+        ctx.strokeStyle = '#000';
         ctx.lineWidth = 2;
         ctx.stroke();
         // Emoji label
         const emoji = categoryEmoji[pin.category] || '📍';
-        ctx.font = '14px Segoe UI Emoji, Apple Color Emoji';
+        ctx.font = '16px Segoe UI Emoji, Apple Color Emoji';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(emoji, pin.x - 6, pin.y + 5);
+        ctx.fillText(emoji, pin.x - 7, pin.y + 6);
         if (pin.label) {
             ctx.fillStyle = '#fff';
             ctx.font = '12px Arial';
-            ctx.fillText(pin.label, pin.x + 18, pin.y + 5);
+            ctx.fillText(pin.label, pin.x + 20, pin.y + 6);
         }
     });
 }
@@ -786,5 +793,10 @@ async function exportBasePinsJSON() {
         console.error(err);
         alert('Export failed: ' + err.message);
     }
+}
+
+function updateDraftCounter() {
+    const el = document.getElementById('draftCount');
+    if (el) el.textContent = 'Draft pins: ' + (draftBasePins ? draftBasePins.length : 0);
 }
 
