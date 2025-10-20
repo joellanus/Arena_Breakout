@@ -403,7 +403,7 @@
                 </div>
 
                 <!-- Map Canvas Area -->
-                <div class="map-canvas-container">
+                <div class="map-canvas-container" style="pointer-events:auto;">
                     <div class="zoom-controls">
                         <button class="zoom-btn" onclick="zoomIn()">+</button>
                         <button class="zoom-btn" onclick="zoomOut()">−</button>
@@ -415,16 +415,19 @@
                         <span id="zoomLabel" style="margin-left: 1rem;">100%</span>
                         <span id="draftCount" style="margin-left: 1rem; color:#00d4ff;">Draft pins: 0</span>
                     </div>
-
-                    <div class="no-map-message" id="noMapMessage">
+                    
+                    <div class="no-map-message" id="noMapMessage" style="pointer-events:none;">
                         <h3>📁 No Map Loaded</h3>
                         <p>Click "Load Map Image" to upload a map screenshot</p>
                         <p style="margin-top: 1rem; font-size: 0.85rem;">
                             Tip: Press F12 in-game to take screenshots
                         </p>
                     </div>
+                    
+                    <canvas id="mapCanvas" style="display: none; pointer-events:auto;"></canvas>
 
-                    <canvas id="mapCanvas" style="display: none;"></canvas>
+                    <!-- Hover tooltip for pins -->
+                    <div id="pinTooltip" class="pin-tooltip" style="display:none;">Tooltip</div>
                 </div>
             </div>
         </main>

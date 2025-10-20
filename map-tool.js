@@ -937,3 +937,51 @@ function logCanvasInfo(prefix, x, y) {
     try { console.log(prefix, { canvasWidth: canvas && canvas.width, canvasHeight: canvas && canvas.height, x, y, tool: currentTool, authorMode }); } catch(_) {}
 }
 
+// Tooltip hover for pins
+(function wirePinTooltip(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.querySelector('.map-canvas-container');
+        const tooltip = document.getElementById('pinTooltip');
+        if (!container || !tooltip) return;
+        const pickNearestPin = (mx, my) => {
+            let best = null; let bestD2 = Infinity;
+            const consider = [];
+            // Include draft base pins
+            (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, label:p.label || p.category || 'Pin' }));
+            // Include base shipped pins (respect visibility)
+            (basePins || []).forEach(p => {
+                const cat = p.category || p.type || 'Misc';
+                if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
+                consider.push({ x:p.x, y:p.y, label:p.label || cat });
+            });
+            // Include user pins
+            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, label:p.note || p.type || 'Pin' }));
+            consider.forEach(p => {
+                const dx = p.x - mx, dy = p.y - my; const d2 = dx*dx + dy*dy;
+                if (d2 < bestD2) { bestD2 = d2; best = p; }
+            });
+            if (best && bestD2 <= (40*40)) return best; // threshold ~40px
+            return null;
+        };
+        container.addEventListener('mousemove', (e) => {
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const hit = pickNearestPin(mx, my);
+            if (hit) {
+                // Position tooltip at cursor
+                tooltip.style.display = '';
+                tooltip.textContent = hit.label || 'Pin';
+                const cx = e.clientX - container.getBoundingClientRect().left;
+                const cy = e.clientY - container.getBoundingClientRect().top;
+                tooltip.style.left = cx + 'px';
+                tooltip.style.top = cy + 'px';
+            } else {
+                tooltip.style.display = 'none';
+            }
+        });
+        container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
+    });
+})();
+
