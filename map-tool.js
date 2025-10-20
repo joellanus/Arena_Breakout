@@ -155,6 +155,68 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Interactive Map Tool loaded!');
 });
 
+// Ensure clicks land even if CSS transforms/pointer-events interfere
+(function bindContainerEvents(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.querySelector('.map-canvas-container');
+        if (!container) return;
+        container.addEventListener('mousedown', (e) => {
+            if (!canvas) return;
+            // ignore clicks on buttons/controls inside container
+            const target = e.target;
+            if (target && (target.closest('.zoom-controls') || target.closest('.map-info'))) return;
+            // Compute canvas-space coordinates
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            // Simulate direct canvas mousedown
+            // set flag and call underlying logic
+            if (isSpacePressed) {
+                isPanning = true;
+                panStart = { x: e.clientX, y: e.clientY };
+                offsetStart = { x: offsetX, y: offsetY };
+            } else if (currentTool === 'pin') {
+                logCanvasInfo('container-click-pin', x, y);
+                addPin(x, y);
+            } else if (currentTool === 'draw' || currentTool === 'erase') {
+                logCanvasInfo('container-click-draw-start', x, y);
+                isDrawing = true;
+                drawingHistory.push({
+                    tool: currentTool,
+                    color: document.getElementById('drawColor').value,
+                    size: parseInt(document.getElementById('brushSize').value),
+                    opacity: parseInt(document.getElementById('drawOpacity').value) / 100,
+                    points: [{x, y}]
+                });
+            }
+        });
+        container.addEventListener('mousemove', (e) => {
+            if (!canvas) return;
+            if (!isDrawing && !isPanning) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            if (isPanning) {
+                const dx = e.clientX - panStart.x;
+                const dy = e.clientY - panStart.y;
+                offsetX = offsetStart.x + dx;
+                offsetY = offsetStart.y + dy;
+                applyZoom();
+                return;
+            }
+            const currentDrawing = drawingHistory[drawingHistory.length - 1];
+            currentDrawing.points.push({x, y});
+            renderCanvas();
+        });
+        ['mouseup','mouseleave'].forEach(ev => {
+            container.addEventListener(ev, () => {
+                if (isPanning) { isPanning = false; return; }
+                if (isDrawing) { isDrawing = false; saveMapData(); }
+            });
+        });
+    });
+})();
+
 // Handle map image upload
 function handleMapUpload(event) {
     const file = event.target.files[0];
@@ -261,8 +323,10 @@ function handleMouseDown(e) {
         panStart = { x: e.clientX, y: e.clientY };
         offsetStart = { x: offsetX, y: offsetY };
     } else if (currentTool === 'pin') {
+        logCanvasInfo('click-pin', x, y);
         addPin(x, y);
     } else if (currentTool === 'draw' || currentTool === 'erase') {
+        logCanvasInfo('click-draw-start', x, y);
         isDrawing = true;
         drawingHistory.push({
             tool: currentTool,
@@ -442,8 +506,17 @@ function renderCanvas() {
     
     // Draw map image
     ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
+    // Ensure we draw overlays normally on top of the map
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    // DEBUG: visible overlay rectangle to verify drawing
+    ctx.save();
+    ctx.strokeStyle = '#ff00ff';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(20, 20, 80, 80);
+    ctx.restore();
 
-    // Draw base pins (shipped) first
+    // Draw base pins (shipped)
     drawBasePins();
     
     // Draw all drawing strokes
@@ -504,10 +577,39 @@ function renderCanvas() {
     updateDraftCounter(); // Update counter after rendering
 }
 
-// Draw base and draft pins
-const _drawBasePins_original = drawBasePins;
-drawBasePins = function() {
-    _drawBasePins_original();
+// Draw base pins (shipped)
+function drawBasePins() {
+    if (!basePins || basePins.length === 0) return;
+    const categoryColor = {
+        'Keys': '#ffaa00',
+        'Spawns': '#44ff44',
+        'Extracts': '#00d4ff'
+    };
+    basePins.forEach(pin => {
+        const cat = pin.category || pin.type || 'Misc';
+        if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
+        const color = pin.color || categoryColor[cat] || '#cccccc';
+        // Diamond shape
+        ctx.save();
+        ctx.translate(pin.x, pin.y);
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -10);
+        ctx.lineTo(10, 0);
+        ctx.lineTo(0, 10);
+        ctx.lineTo(-10, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+        if (pin.label) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Arial';
+            ctx.fillText(pin.label, pin.x + 14, pin.y + 4);
+        }
+    });
 }
 
 function drawDraftBasePinsOnTop() {
@@ -828,5 +930,10 @@ async function exportBasePinsJSON() {
 function updateDraftCounter() {
     const el = document.getElementById('draftCount');
     if (el) el.textContent = 'Draft pins: ' + (draftBasePins ? draftBasePins.length : 0);
+}
+
+// Sanity logging
+function logCanvasInfo(prefix, x, y) {
+    try { console.log(prefix, { canvasWidth: canvas && canvas.width, canvasHeight: canvas && canvas.height, x, y, tool: currentTool, authorMode }); } catch(_) {}
 }
 
