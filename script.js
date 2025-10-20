@@ -170,30 +170,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('Update configuration missing.');
                     return;
                 }
-                const manifestRes = await fetch(CONFIG.update.manifestUrl, { cache: 'no-store' });
-                if (!manifestRes.ok) throw new Error('Failed to fetch manifest');
-                const manifest = await manifestRes.json();
-                const current = CONFIG.version;
-                const latest = manifest.version;
-                if (!latest) {
-                    alert('No version info found.');
-                    return;
-                }
-                if (compareVersions(latest, current) <= 0) {
-                    alert(`You are up to date (v${current}).`);
-                    return;
-                }
-                const proceed = confirm(`New version available: v${latest} (current v${current}).\nInstall update now?`);
-                if (!proceed) return;
 
-                // Try File System Access API
-                const supportsFS = 'showDirectoryPicker' in window;
-                if (!supportsFS) {
-                    window.open(CONFIG.update.releaseUrl || CONFIG.update.zipUrl, '_blank');
-                    return;
-                }
-
-                // Ask user to pick the app folder (the folder containing index.html)
+                // Prompt and pick directory first to preserve user gesture
                 try {
                     const href = decodeURIComponent(location.href || '');
                     let suggestion = '';
@@ -215,9 +193,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!proceedAnyway) return;
                 }
 
-                // Download ZIP
-                const zipRes = await fetch(CONFIG.update.zipUrl, { cache: 'no-store' });
-                if (!zipRes.ok) throw new Error('Failed to download update');
+                // Now fetch manifest and compare versions
+                const manifestRes = await fetch(CONFIG.update.manifestUrl, { cache: 'no-store' });
+                if (!manifestRes.ok) throw new Error('Failed to fetch manifest');
+                const manifest = await manifestRes.json();
+                const current = CONFIG.version;
+                const latest = manifest.version;
+                if (!latest || compareVersions(latest, current) <= 0) {
+                    alert(`You are up to date (v${current}).`);
+                    return;
+                }
+                const proceed = confirm(`New version available: v${latest} (current v${current}).\nInstall update now?`);
+                if (!proceed) return;
+
+                // Download ZIP (cache-bust) with CDN -> GitHub fallback
+                const zipUrlCdn = CONFIG.update.zipUrl + (CONFIG.update.zipUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                let zipRes = await fetch(zipUrlCdn, { cache: 'no-store' }).catch(() => null);
+                if (!zipRes || !zipRes.ok) {
+                    const ghUrl = (CONFIG.update.releaseUrl ? CONFIG.update.releaseUrl.replace(/\/?$/, '') + '/latest/download/arena-breakout-helper.zip' : null);
+                    if (ghUrl) {
+                        const ghUrlBusted = ghUrl + (ghUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        zipRes = await fetch(ghUrlBusted, { cache: 'no-store' }).catch(() => null);
+                    }
+                }
+                if (!zipRes || !zipRes.ok) throw new Error('Failed to download update');
                 const zipArray = await zipRes.arrayBuffer();
 
                 // Lazy-load JSZip if not present
