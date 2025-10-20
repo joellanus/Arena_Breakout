@@ -39,6 +39,9 @@ let draftBasePins = [];
         if (toggle) {
             toggle.addEventListener('change', () => {
                 authorMode = !!toggle.checked;
+                if (authorMode) {
+                    try { setTool('pin'); } catch(_) {}
+                }
             });
         }
         if (exportBtn) {

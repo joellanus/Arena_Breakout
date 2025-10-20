@@ -208,15 +208,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Download ZIP (cache-bust) with CDN -> GitHub fallback
                 const zipUrlCdn = CONFIG.update.zipUrl + (CONFIG.update.zipUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                let triedUrls = [];
+                triedUrls.push(zipUrlCdn);
                 let zipRes = await fetch(zipUrlCdn, { cache: 'no-store' }).catch(() => null);
                 if (!zipRes || !zipRes.ok) {
                     const ghUrl = (CONFIG.update.releaseUrl ? CONFIG.update.releaseUrl.replace(/\/?$/, '') + '/latest/download/arena-breakout-helper.zip' : null);
                     if (ghUrl) {
                         const ghUrlBusted = ghUrl + (ghUrl.includes('?') ? '&' : '?') + 't=' + Date.now();
+                        triedUrls.push(ghUrlBusted);
                         zipRes = await fetch(ghUrlBusted, { cache: 'no-store' }).catch(() => null);
                     }
                 }
-                if (!zipRes || !zipRes.ok) throw new Error('Failed to download update');
+                if (!zipRes || !zipRes.ok) throw new Error('Failed to download update from:\n' + triedUrls.join('\n'));
                 const zipArray = await zipRes.arrayBuffer();
 
                 // Lazy-load JSZip if not present
