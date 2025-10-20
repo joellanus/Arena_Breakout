@@ -308,6 +308,7 @@ addPin = function(x, y) {
         const category = catSel ? catSel.value : 'Keys';
         const label = prompt('Label for this base pin (optional):', '');
         draftBasePins.push({ x, y, category, label: label || '' });
+        try { console.log('Draft base pin added', { x, y, category, label }); } catch (_) {}
         renderCanvas();
         return;
     }
@@ -463,34 +464,52 @@ function renderCanvas() {
             ctx.fillText('📝', pin.x + 17, pin.y + 5);
         }
     });
+    // Finally draw any draft base pins above everything
+    drawDraftBasePinsOnTop();
 }
 
 // Draw base and draft pins
 const _drawBasePins_original = drawBasePins;
 drawBasePins = function() {
     _drawBasePins_original();
+}
+
+function drawDraftBasePinsOnTop() {
     if (!draftBasePins || draftBasePins.length === 0) return;
     const categoryColor = {
         'Keys': '#ffaa00',
         'Spawns': '#44ff44',
         'Extracts': '#00d4ff'
     };
+    const categoryEmoji = {
+        'Keys': '🔑',
+        'Spawns': '🧍',
+        'Extracts': '🚪'
+    };
     draftBasePins.forEach(pin => {
         const color = categoryColor[pin.category] || '#cccccc';
-        ctx.save();
-        ctx.translate(pin.x, pin.y);
-        ctx.fillStyle = color;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1;
+        // Outer bright ring
         ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.arc(pin.x, pin.y, 16, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fill();
+        // Inner circle
+        ctx.beginPath();
+        ctx.arc(pin.x, pin.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
         ctx.stroke();
-        ctx.restore();
+        // Emoji label
+        const emoji = categoryEmoji[pin.category] || '📍';
+        ctx.font = '14px Segoe UI Emoji, Apple Color Emoji';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(emoji, pin.x - 6, pin.y + 5);
         if (pin.label) {
             ctx.fillStyle = '#fff';
             ctx.font = '12px Arial';
-            ctx.fillText(pin.label, pin.x + 12, pin.y + 4);
+            ctx.fillText(pin.label, pin.x + 18, pin.y + 5);
         }
     });
 }
