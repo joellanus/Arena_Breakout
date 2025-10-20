@@ -1,5 +1,7 @@
 # Build artifacts
-/dist/
+/dist/*
+!/dist/
+!/dist/latest.zip
 *.zip
 
 # VCS and tool metadata

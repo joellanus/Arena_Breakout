@@ -182,6 +182,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Ask user to pick the app folder (the folder containing index.html)
+                try {
+                    const href = decodeURIComponent(location.href || '');
+                    let suggestion = '';
+                    if (href.startsWith('file:///')) {
+                        // Convert file:///G:/path/to/index.html -> G:\path\to\
+                        const windowsPath = href.replace('file:///', '').replace(/\//g, '\\');
+                        suggestion = windowsPath.replace(/[^\\]+$/, '');
+                    }
+                    const msg = 'Select the folder where Arena Breakout Helper is installed.\n' +
+                                'Pick the folder that contains index.html.\n' +
+                                (suggestion ? ('Suggested: ' + suggestion) : '');
+                    alert(msg);
+                } catch (_) {}
                 const dirHandle = await window.showDirectoryPicker();
                 // Simple check: ensure index.html exists
                 const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);

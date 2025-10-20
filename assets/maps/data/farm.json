@@ -1,0 +1,6 @@
+{
+  "map": "Farm",
+  "image": "assets/maps/farm.png",
+  "categories": ["Keys", "Spawns", "Extracts"],
+  "basePins": []
+}

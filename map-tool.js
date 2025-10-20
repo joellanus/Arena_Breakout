@@ -20,6 +20,42 @@ let offsetStart = { x: 0, y: 0 };
 let saveDebounceId = null;
 let selectedMap = 'Farm';
 
+// Shipped base data
+let basePins = [];
+let baseCategories = [];
+let visibleBaseCategories = new Set();
+
+// Authoring state
+let authorMode = false;
+let draftBasePins = [];
+
+// Hook up Author Mode UI after DOM ready additions
+(function wireAuthorUI(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggle = document.getElementById('authorToggle');
+        const catSel = document.getElementById('authorCategory');
+        const exportBtn = document.getElementById('exportBasePinsBtn');
+        const clearDraftBtn = document.getElementById('clearDraftPinsBtn');
+        if (toggle) {
+            toggle.addEventListener('change', () => {
+                authorMode = !!toggle.checked;
+            });
+        }
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportBasePinsJSON);
+        }
+        if (clearDraftBtn) {
+            clearDraftBtn.addEventListener('click', () => {
+                if (draftBasePins.length === 0) return;
+                if (confirm('Clear all draft base pins?')) {
+                    draftBasePins = [];
+                    renderCanvas();
+                }
+            });
+        }
+    });
+})();
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     canvas = document.getElementById('mapCanvas');
@@ -75,11 +111,13 @@ document.addEventListener('DOMContentLoaded', function() {
             canvas.style.display = 'none';
             document.getElementById('noMapMessage').style.display = 'block';
             updatePinsList();
+            loadBaseDataForSelectedMap();
             loadMapData();
         });
     }
     
-    // Load saved data if exists
+    // Load base shipped data and saved data
+    loadBaseDataForSelectedMap();
     loadMapData();
     
     console.log('Interactive Map Tool loaded!');
@@ -161,16 +199,21 @@ function setTool(tool) {
     }
 }
 
-// Set marker type for pins
-function setMarkerType(el, type, color) {
+// Set marker type for pins (supports setMarkerType(el,type,color) or setMarkerType(type,color))
+function setMarkerType(a, b, c) {
+    let el = null, type = null, color = null;
+    if (c !== undefined) {
+        el = a; type = b; color = c;
+    } else {
+        type = a; color = b;
+    }
     currentMarkerType = type;
     currentMarkerColor = color;
-    
-    // Update active state
+    // Update active state only if element is provided
     document.querySelectorAll('.marker-type').forEach(marker => {
         marker.classList.remove('active');
     });
-    if (el) el.classList.add('active');
+    if (el && el.classList) el.classList.add('active');
 }
 
 // Mouse event handlers
@@ -255,6 +298,21 @@ function addPin(x, y) {
     updatePinsList();
     renderCanvas();
     saveMapData();
+}
+
+// Override addPin to handle author mode for base pins creation
+const _addPin_original = addPin;
+addPin = function(x, y) {
+    if (authorMode) {
+        const catSel = document.getElementById('authorCategory');
+        const category = catSel ? catSel.value : 'Keys';
+        const label = prompt('Label for this base pin (optional):', '');
+        draftBasePins.push({ x, y, category, label: label || '' });
+        renderCanvas();
+        return;
+    }
+    // user pins (default)
+    _addPin_original(x, y);
 }
 
 // Update pins list in sidebar
@@ -349,6 +407,9 @@ function renderCanvas() {
     
     // Draw map image
     ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
+
+    // Draw base pins (shipped) first
+    drawBasePins();
     
     // Draw all drawing strokes
     drawingHistory.forEach(drawing => {
@@ -373,7 +434,7 @@ function renderCanvas() {
         ctx.globalCompositeOperation = 'source-over';
     });
     
-    // Draw all pins
+    // Draw all user pins on top
     pins.forEach(pin => {
         // Draw pin circle
         ctx.fillStyle = pin.color;
@@ -400,6 +461,36 @@ function renderCanvas() {
             ctx.fillStyle = '#fff';
             ctx.font = '12px Arial';
             ctx.fillText('📝', pin.x + 17, pin.y + 5);
+        }
+    });
+}
+
+// Draw base and draft pins
+const _drawBasePins_original = drawBasePins;
+drawBasePins = function() {
+    _drawBasePins_original();
+    if (!draftBasePins || draftBasePins.length === 0) return;
+    const categoryColor = {
+        'Keys': '#ffaa00',
+        'Spawns': '#44ff44',
+        'Extracts': '#00d4ff'
+    };
+    draftBasePins.forEach(pin => {
+        const color = categoryColor[pin.category] || '#cccccc';
+        ctx.save();
+        ctx.translate(pin.x, pin.y);
+        ctx.fillStyle = color;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+        if (pin.label) {
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px Arial';
+            ctx.fillText(pin.label, pin.x + 12, pin.y + 4);
         }
     });
 }
@@ -454,6 +545,8 @@ function loadMapData() {
     try {
         const saved = localStorage.getItem(getStorageKey());
         if (!saved) {
+            // No local save: load shipped image
+            loadDefaultMapImage();
             updatePinsList();
             return;
         }
@@ -474,6 +567,8 @@ function loadMapData() {
             };
             img.src = baseMapImageData;
         } else {
+            // Fallback to shipped image
+            loadDefaultMapImage();
             updatePinsList();
         }
         console.log('Map data loaded for', selectedMap);
@@ -527,14 +622,7 @@ console.log('Map Tool JS loaded. Keyboard shortcuts: 1=Pin, 2=Draw, 3=Erase, Spa
 
 // Load default image for selected map from assets
 function loadDefaultMapImage() {
-    const mapToSlug = {
-        'Farm': 'farm',
-        'Valley': 'valley',
-        'Northridge': 'northridge',
-        'Armory': 'armory',
-        'TV Station': 'tv-station'
-    };
-    const slug = mapToSlug[selectedMap] || selectedMap.toLowerCase().replace(/\s+/g, '-');
+    const slug = getMapSlug(selectedMap);
     const path = `assets/maps/${slug}.png`;
     const img = new Image();
     img.onload = function() {
@@ -566,5 +654,115 @@ function loadDefaultMapImage() {
         alert('Default image not found at ' + path + '. Place an image there or use Load Map Image.');
     };
     img.src = path;
+}
+
+function getMapSlug(name) {
+    const mapToSlug = {
+        'Farm': 'farm',
+        'Valley': 'valley',
+        'Northridge': 'northridge',
+        'Armory': 'armory',
+        'TV Station': 'tv-station'
+    };
+    return mapToSlug[name] || name.toLowerCase().replace(/\s+/g, '-');
+}
+
+function loadBaseDataForSelectedMap() {
+    const slug = getMapSlug(selectedMap);
+    const url = `assets/maps/data/${slug}.json`;
+    basePins = [];
+    baseCategories = [];
+    const togglesRoot = document.getElementById('baseLayerToggles');
+    const section = document.getElementById('baseLayersSection');
+    if (togglesRoot) togglesRoot.innerHTML = '';
+    if (section) section.style.display = 'none';
+    fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(data => {
+        if (!data) return;
+        basePins = Array.isArray(data.basePins) ? data.basePins : [];
+        baseCategories = Array.isArray(data.categories) ? data.categories : [];
+        // Initialize visibility from localStorage or default to all
+        const visKey = 'mapTool:visibleCats:' + selectedMap;
+        const saved = localStorage.getItem(visKey);
+        if (saved) {
+            try {
+                visibleBaseCategories = new Set(JSON.parse(saved));
+            } catch (_) {
+                visibleBaseCategories = new Set(baseCategories);
+            }
+        } else {
+            visibleBaseCategories = new Set(baseCategories);
+        }
+        if (section && togglesRoot && baseCategories.length > 0) {
+            section.style.display = 'block';
+            baseCategories.forEach(cat => {
+                const id = 'bl-' + cat.replace(/[^a-z0-9]/ig, '').toLowerCase();
+                const wrapper = document.createElement('div');
+                wrapper.style.display = 'flex';
+                wrapper.style.alignItems = 'center';
+                wrapper.style.gap = '0.5rem';
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.id = id;
+                input.checked = visibleBaseCategories.has(cat);
+                const label = document.createElement('label');
+                label.htmlFor = id;
+                label.textContent = cat;
+                input.addEventListener('change', () => {
+                    if (input.checked) visibleBaseCategories.add(cat); else visibleBaseCategories.delete(cat);
+                    localStorage.setItem(visKey, JSON.stringify(Array.from(visibleBaseCategories)));
+                    renderCanvas();
+                });
+                wrapper.appendChild(input);
+                wrapper.appendChild(label);
+                togglesRoot.appendChild(wrapper);
+            });
+        }
+        renderCanvas();
+    }).catch(() => {
+        // no base data
+    });
+}
+
+async function exportBasePinsJSON() {
+    try {
+        // Merge draft pins into base pins grouped by category
+        const merged = (basePins || []).concat(draftBasePins || []);
+        const payload = {
+            map: selectedMap,
+            image: `assets/maps/${getMapSlug(selectedMap)}.png`,
+            categories: baseCategories.length ? baseCategories : ['Keys','Spawns','Extracts'],
+            basePins: merged
+        };
+        // Request folder: ask for the project root (containing index.html)
+        const supportsFS = 'showDirectoryPicker' in window;
+        if (!supportsFS) {
+            alert('Your browser does not support exporting. Please use a Chromium-based browser.');
+            return;
+        }
+        alert('Select the project folder (the one that contains index.html). The tool will write into assets/maps/data/.');
+        const dirHandle = await window.showDirectoryPicker();
+        const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
+        if (!hasIndex) {
+            const proceed = confirm('Selected folder does not contain index.html. Continue anyway?');
+            if (!proceed) return;
+        }
+        // Create nested directories assets/maps/data
+        const assetsDir = await dirHandle.getDirectoryHandle('assets', { create: true });
+        const mapsDir = await assetsDir.getDirectoryHandle('maps', { create: true });
+        const dataDir = await mapsDir.getDirectoryHandle('data', { create: true });
+        const fileName = `${getMapSlug(selectedMap)}.json`;
+        const fileHandle = await dataDir.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+        await writable.close();
+        alert('Exported base pins to assets/maps/data/' + fileName + '\nCommit and push to ship these to everyone.');
+        // Replace in-memory basePins with merged and clear draft
+        basePins = merged;
+        draftBasePins = [];
+        renderCanvas();
+    } catch (err) {
+        console.error(err);
+        alert('Export failed: ' + err.message);
+    }
 }
 

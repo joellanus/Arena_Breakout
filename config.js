@@ -4,11 +4,11 @@
 const CONFIG = {
     // App Settings
     appName: "Arena Breakout Helper",
-    version: "1.1",
+    version: "1.2",
     update: {
         // Replace OWNER and REPO after pushing to GitHub
         manifestUrl: "https://raw.githubusercontent.com/joellanus/Arena_Breakout/main/version.json",
-        zipUrl: "https://github.com/joellanus/Arena_Breakout/releases/latest/download/arena-breakout-helper.zip",
+        zipUrl: "https://cdn.jsdelivr.net/gh/joellanus/Arena_Breakout@main/dist/latest.zip",
         releaseUrl: "https://github.com/joellanus/Arena_Breakout/releases",
         autoInstall: true
     },

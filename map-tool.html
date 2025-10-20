@@ -273,6 +273,10 @@
                     <!-- Load Map Section -->
                     <div class="tool-section">
                         <h3>📁 Map Image</h3>
+                        <label style="color:#999; font-size:0.85rem; display:block; margin-bottom:0.5rem;">Map:</label>
+                        <select id="mapSelect" class="tool-button" style="appearance: none; text-align:left;">
+                            <option>Farm</option>
+                        </select>
                         <label for="mapUpload" class="file-input-label">
                             📤 Load Map Image
                         </label>
@@ -280,6 +284,12 @@
                         <button class="tool-button" onclick="clearMap()" style="margin-top: 0.5rem;">
                             🗑️ Clear Map
                         </button>
+                    </div>
+
+                    <!-- Base Layers (shipped pins) -->
+                    <div class="tool-section" id="baseLayersSection" style="display:none;">
+                        <h3>🧭 Base Layers</h3>
+                        <div id="baseLayerToggles"></div>
                     </div>
 
                     <!-- Drawing Tools -->
@@ -364,6 +374,25 @@
                         <button class="tool-button" onclick="exportMapImage()">
                             📥 Export as Image
                         </button>
+                    </div>
+
+                    <!-- Author Mode -->
+                    <div class="tool-section" id="authorSection">
+                        <h3>🛠️ Author Mode</h3>
+                        <label style="display:flex; align-items:center; gap:0.5rem; color:#999; font-size:0.9rem; margin-bottom:0.5rem;">
+                            <input type="checkbox" id="authorToggle"> Enable authoring of base pins
+                        </label>
+                        <label style="color:#999; font-size:0.85rem; display:block; margin-bottom:0.5rem;">
+                            Category:
+                        </label>
+                        <select id="authorCategory" class="tool-button" style="appearance: none; text-align:left;">
+                            <option>Keys</option>
+                            <option>Spawns</option>
+                            <option>Extracts</option>
+                        </select>
+                        <button class="tool-button" id="exportBasePinsBtn">💾 Export Base Pins (JSON)</button>
+                        <button class="tool-button" id="clearDraftPinsBtn">🗑️ Clear Draft Pins</button>
+                        <p style="color:#666; font-size:0.8rem; margin-top:0.5rem;">Tip: With Author Mode ON and the Pin tool selected, clicks add base pins.</p>
                     </div>
                 </div>
 
