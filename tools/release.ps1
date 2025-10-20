@@ -13,7 +13,7 @@ $ConfigPath = Join-Path $Root 'config.js'
 $ManifestPath = Join-Path $Root 'version.json'
 
 # Ensure dist exists fresh
-if (Test-Path $Dist) { Remove-Item -Recurse -Force $Dist }
+if (Test-Path $Dist) { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 
 # Extract version from config.js unless overridden
@@ -42,17 +42,23 @@ $excludePatterns = @(
     '\\.agent-tools(\\|$)'
 )
 
-$files = Get-ChildItem -Path $Root -Recurse -File |
-    Where-Object {
-        $full = $_.FullName
-        -not ($excludePatterns | ForEach-Object { $full -match $_ } | Where-Object { $_ })
-    } |
-    Select-Object -ExpandProperty FullName
+$previousErrorPreference = $ErrorActionPreference
+try {
+    $ErrorActionPreference = 'Continue'
+    $files = Get-ChildItem -Path $Root -Recurse -File -Force -ErrorAction SilentlyContinue |
+        Where-Object {
+            $full = $_.FullName
+            -not ($excludePatterns | ForEach-Object { $full -match $_ } | Where-Object { $_ })
+        } |
+        Select-Object -ExpandProperty FullName
+} finally {
+    $ErrorActionPreference = $previousErrorPreference
+}
 
-if (-not $files) { throw 'No files found to include in the archive.' }
+if (-not $files -or $files.Count -eq 0) { throw 'No files found to include in the archive.' }
 
 # Create zip
-if (Test-Path $ZipPathVersioned) { Remove-Item -Force $ZipPathVersioned }
+if (Test-Path $ZipPathVersioned) { Remove-Item -Force $ZipPathVersioned -ErrorAction SilentlyContinue }
 Compress-Archive -Path $files -DestinationPath $ZipPathVersioned -CompressionLevel Optimal
 
 # Copy/overwrite latest.zip alias
@@ -73,7 +79,4 @@ Write-Host "Manifest updated: $ManifestPath"
 Write-Host ''
 Write-Host 'Next steps:'
 Write-Host '1) Commit and push changes.'
-Write-Host '2) Create a GitHub Release and upload dist/latest.zip as asset named: arena-breakout-helper.zip'
-Write-Host '3) Ensure config.js update URLs point to:'
-Write-Host '   - manifestUrl: https://raw.githubusercontent.com/OWNER/REPO/main/version.json'
-Write-Host '   - zipUrl:      https://github.com/OWNER/REPO/releases/latest/download/arena-breakout-helper.zip'
+Write-Host '2) Ensure config.js update URLs point to CDN (jsDelivr) or publish a GitHub Release asset.'
