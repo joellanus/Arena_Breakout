@@ -13,7 +13,7 @@ $ConfigPath = Join-Path $Root 'config.js'
 $ManifestPath = Join-Path $Root 'version.json'
 
 # Ensure dist exists fresh
-if (Test-Path $Dist) { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue }
+if (Test-Path $Dist) { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue -Path $Dist }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 
 # Extract version from config.js unless overridden
@@ -58,7 +58,7 @@ try {
 if (-not $files -or $files.Count -eq 0) { throw 'No files found to include in the archive.' }
 
 # Create zip
-if (Test-Path $ZipPathVersioned) { Remove-Item -Force $ZipPathVersioned -ErrorAction SilentlyContinue }
+if (Test-Path $ZipPathVersioned) { Remove-Item -Force -ErrorAction SilentlyContinue -Path $ZipPathVersioned }
 Compress-Archive -Path $files -DestinationPath $ZipPathVersioned -CompressionLevel Optimal
 
 # Copy/overwrite latest.zip alias

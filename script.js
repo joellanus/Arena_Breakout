@@ -113,6 +113,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Updater logic (shared on index and map pages)
 document.addEventListener('DOMContentLoaded', function() {
+    function compareVersions(a, b) {
+        // returns 1 if a>b, -1 if a<b, 0 if equal
+        const pa = String(a).split('.').map(n => parseInt(n, 10) || 0);
+        const pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+        const len = Math.max(pa.length, pb.length);
+        for (let i = 0; i < len; i++) {
+            const x = pa[i] || 0, y = pb[i] || 0;
+            if (x > y) return 1;
+            if (x < y) return -1;
+        }
+        return 0;
+    }
     // Version tag injection
     try {
         const v = (typeof CONFIG !== 'undefined' && CONFIG.version) ? CONFIG.version : null;
@@ -136,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const manifest = await manifestRes.json();
             const current = CONFIG.version;
             const latest = manifest.version;
-            if (latest && latest !== current && banner) {
+            if (latest && compareVersions(latest, current) > 0 && banner) {
                 banner.style.display = '';
                 if (bannerText) bannerText.textContent = `(current v${current} → v${latest})`;
                 if (bannerInstall) bannerInstall.onclick = () => {
@@ -167,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert('No version info found.');
                     return;
                 }
-                if (latest === current) {
+                if (compareVersions(latest, current) <= 0) {
                     alert(`You are up to date (v${current}).`);
                     return;
                 }
@@ -186,7 +198,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const href = decodeURIComponent(location.href || '');
                     let suggestion = '';
                     if (href.startsWith('file:///')) {
-                        // Convert file:///G:/path/to/index.html -> G:\path\to\
+                        // Convert file:///G:/path/to/index.html -> G:\\path\\to\\
                         const windowsPath = href.replace('file:///', '').replace(/\//g, '\\');
                         suggestion = windowsPath.replace(/[^\\]+$/, '');
                     }
