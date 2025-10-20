@@ -81,6 +81,13 @@ The **Interactive Map Tool** is a game-changer! Access it from the main helper (
 
 See `MAP_TOOL_GUIDE.md` for detailed instructions!
 
+## Update Button
+
+- Click “⬇️ Check for Updates” in the header
+- Select the install folder (the folder that contains `index.html`)
+- The app downloads and extracts the latest ZIP
+- If CDN is slow, wait ~1–2 minutes or open the ZIP URL once in your browser
+
 ## File Overview
 
 ```

@@ -1,118 +1,103 @@
 # Arena Breakout Helper
 
-A sleek, modern overlay helper for Arena Breakout designed to fit perfectly on your 4K monitor while running the game in 2K resolution.
+A modern, offline HTML app for Arena Breakout. Includes a sleek helper, an interactive map tool, a built‑in self‑update flow (no localhost/servers), and an authoring mode to ship curated pins to all users.
 
-## Features
+## Highlights
 
-- **Clean Black Theme**: Matches your desktop for a seamless look
-- **Tabbed Interface**: Easy navigation between different sections
-- **Keybinds Reference**: Quick access to all game controls
-- **Maps & Locations**: Visual reference for map layouts and key locations
-- **Interactive Map Tool**: 🗺️ Draw routes, add pins with notes, plan strategies! (NEW!)
-- **Recommended Loadouts**: Pre-configured loadouts for different playstyles
-- **Tips & Tricks**: Helpful advice for improving your gameplay
-- **Extra Features**: Timer, notes, checklist, stats tracker (see examples.html)
+- Updater: checks `version.json` on main, downloads ZIP from CDN; fallback to GitHub Releases
+- Interactive Map Tool: draw, pins, zoom, export
+- Shipped Base Layers: curated pins per map loaded from `assets/maps/data/<map>.json` with category toggles
+- Author Mode (dev only): place base pins and export JSON directly into the repo folder
+- Hover tooltip: enlarged label when hovering near a pin
+- No server required; everything runs from the filesystem
 
-## How to Use
+## Getting Started
 
-### Quick Start
-1. Open `index.html` in your web browser
-2. Position the browser window underneath or beside your game
-3. Press F11 for fullscreen mode (exit with F11 or Esc)
-4. Switch between tabs to access different information
+- Launch: double‑click `launch-helper.bat` (Chrome/Edge app window) or open `index.html`
+- Update: click “⬇️ Check for Updates”, select the folder that contains `index.html` (your install folder)
+- Maps: click the orange Maps button
 
-### Keyboard Shortcuts
-- **Alt + 1**: Keybinds tab
-- **Alt + 2**: Maps tab
-- **Alt + 3**: Loadouts tab
-- **Alt + 4**: Tips & Tricks tab
-- **F11**: Toggle fullscreen
+## Repository Layout
 
-## Customization
-
-### Adding Your Own Content
-
-#### To Add Keybinds:
-Edit the `index.html` file and add new keybind items in the keybinds section:
-```html
-<div class="keybind-item">
-    <span class="key">YOUR_KEY</span>
-    <span class="description">Your Description</span>
-</div>
+```
+/                     project root (open this folder in the updater)
+├─ index.html         main helper UI
+├─ map-tool.html      interactive map tool UI
+├─ styles.css         global styles
+├─ script.js          tabs + updater + shared helpers
+├─ map-tool.js        map logic (drawing, pins, base layers, authoring)
+├─ config.js          app configuration (version + update URLs)
+├─ version.json       update manifest (current version)
+├─ tools/
+│  └─ release.ps1     build script → dist/*.zip and refresh manifest
+├─ dist/
+│  ├─ arena-breakout-helper-vX.Y.Z.zip
+│  └─ latest.zip      symlink copy of the latest build (committed)
+└─ assets/
+   └─ maps/
+      ├─ farm.png     shipped map image example
+      └─ data/
+         └─ farm.json shipped base pins + categories
 ```
 
-#### To Add Maps:
-1. Take screenshots of your game maps
-2. Save them in the project folder
-3. Add them to the Maps section in `index.html`
+## How Updates Work
 
-#### To Customize Colors:
-Edit `styles.css` and change the color values:
-- Primary color: `#0099ff`
-- Accent color: `#00d4ff`
-- Background: `#000000`
+- Manifest: `https://raw.githubusercontent.com/<OWNER>/<REPO>/main/version.json`
+- ZIP (CDN): `https://cdn.jsdelivr.net/gh/<OWNER>/<REPO>@main/dist/latest.zip`
+- The app fetches the manifest and only prompts if online version > local version (no downgrades)
+- Download uses CDN with cache‑busting and falls back to GitHub Releases’ `latest/download/arena-breakout-helper.zip`
 
-### Advanced: Create a Desktop Shortcut
+Troubleshooting updates:
+- Always select the install folder (the folder that contains `index.html`)
+- CDN can take ~1–2 minutes after a push; warm it by visiting the ZIP URL in a browser
+- If a fetch fails, the alert shows attempted URLs
 
-**Windows:**
-1. Right-click on `index.html`
-2. Select "Create shortcut"
-3. Right-click the shortcut → Properties
-4. In "Target" field, add your browser path before the file path:
-   ```
-   "C:\Program Files\Google\Chrome\Application\chrome.exe" --app="file:///G:/My Drive/black/programming/project breakpoint/index.html"
-   ```
-5. Click "Change Icon" to set a custom icon (optional)
+## Dev Mode and Authoring
 
-### Optional: Make it Always-on-Top
+- Toggle dev mode: press Ctrl+Shift+D (shows the Author Mode section)
+- Author Mode ON → select category (e.g., Keys, Extracts) → select Pin tool → click the map → enter a label
+- Toggle Base Layers (🧭) to show/hide shipped categories
+- Export Base Pins (JSON): writes `assets/maps/data/<map>.json` via File System Access (select the project folder)
+- Ship curated data by committing that JSON (and any new images in `assets/maps/`)
 
-For Chrome/Edge:
-- Install an extension like "Always On Top" from the web store
-- Use the extension to keep the helper window always visible
+## Building and Publishing a Release
 
-## Browser Recommendations
+1) Bump version in `config.js` (e.g., to 1.2.5), or pass `-VersionOverride`
 
-- **Chrome/Edge**: Best performance and modern features
-- **Firefox**: Good alternative with solid performance
-- **Opera GX**: Great for gamers with built-in features
+2) Build and refresh manifest:
+```
+./tools/release.ps1 -VersionOverride 1.2.5
+```
+This creates/updates:
+- `dist/arena-breakout-helper-v1.2.5.zip`
+- `dist/latest.zip`
+- `version.json` with the new version
 
-## Future Enhancements
+3) Commit and push:
+```
+git add -A
+git commit -m "v1.2.5: description of changes"
+git push
+```
+CDN propagation may take ~1–2 minutes.
 
-You can easily extend this helper with:
-- Mission timers
-- Note-taking system
-- Screenshot gallery for maps
-- Custom keybind editor
-- Progress tracker
-- Stats calculator
+Notes:
+- `.gitignore` keeps `dist/` ignored except for `dist/latest.zip` which is committed for CDN delivery
+- Update URLs live in `config.js` under `CONFIG.update`
 
-## Positioning Tips
+## Map Tool Quick Tips
 
-For a 4K monitor (3840x2160) running the game in 2K (2560x1440):
-- **Left Side**: 1280px of extra horizontal space
-- **Bottom**: 720px of extra vertical space
+- Tools: 1=Pin, 2=Draw, 3=Erase; Ctrl+S=Save, Ctrl+Z=Undo; ⟲ resets zoom
+- Hover near a pin to see a large tooltip with its label
+- Draft pins counter is displayed in the HUD while authoring
 
-Recommended browser window sizes:
-- **Below game**: Full width (3840px) × 720px height
-- **Left side**: 1280px width × Full height (2160px)
+## Contributing
 
-## Troubleshooting
-
-**Issue**: Colors don't look right
-- Make sure you're viewing in a modern browser (Chrome, Firefox, Edge)
-- Check if hardware acceleration is enabled
-
-**Issue**: Window won't stay on top
-- Use an "Always on Top" browser extension
-- Or use a third-party tool like "DeskPins" or "AutoHotkey"
+- Dev mode: Ctrl+Shift+D
+- Put new maps in `assets/maps/` and add JSON to `assets/maps/data/`
+- Keep `README.md`, `DEVELOPMENT.md`, and `CHANGELOG.md` updated when you change flows
 
 ## License
 
-Free to use and modify for personal use. Customize it to fit your needs!
-
----
-
-**Version**: 1.0  
-**Created**: 2025  
-**Game**: Arena Breakout
+Personal use permitted. Customize and share with your squad.
 

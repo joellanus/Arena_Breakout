@@ -2,18 +2,45 @@
 
 Your personal tactical map planner for Arena Breakout!
 
-## What Can You Do?
+## New in 1.2+
 
-✏️ **Draw on maps** - Plan routes, mark patrol paths, show danger zones  
-📍 **Add pins** - Mark important locations with notes  
-💾 **Auto-save** - Everything saves automatically to your browser  
-📥 **Export** - Save your annotated map as an image  
+- Shipped Base Layers: curated pins per map from `assets/maps/data/<map>.json`
+- Category toggles (🧭 Base Layers) to show/hide shipped pins
+- Author Mode (dev only): place curated pins and export JSON directly into the repo
+- Hover tooltip: enlarged label when pointing near a pin
+
+## Dev Mode & Authoring
+
+- Toggle Dev Mode: Ctrl+Shift+D
+- Author Mode: enable the checkbox in the sidebar (visible only in dev mode)
+- Choose a category → select the Pin tool → click to place a draft base pin → enter an optional label
+- The HUD shows “Draft pins: N” as you place them
+- Export JSON: click “💾 Export Base Pins (JSON)”, then select the project folder (the one containing `index.html`)
+  - Writes `assets/maps/data/<slug>.json`
+  - Commit and push to ship to everyone
+
+## Base Layers
+
+- Base pins are read from `assets/maps/data/<slug>.json`
+- Example schema:
+```json
+{
+  "map": "Farm",
+  "image": "assets/maps/farm.png",
+  "categories": ["Keys", "Spawns", "Extracts"],
+  "basePins": [
+    { "x": 1234, "y": 890, "category": "Keys", "label": "Dorm Key" },
+    { "x": 640,  "y": 512, "category": "Spawns", "label": "South Spawn" }
+  ]
+}
+```
+- Category toggles are persisted per map in `localStorage`
 
 ## Quick Start
 
-1. **Open the Map Tool** - Click "Interactive Map Tool" button from main helper
-2. **Load a Map** - Click "Load Map Image" and select a screenshot
-3. **Start Marking** - Choose a tool and start planning!
+1. Open Map Tool (orange button)
+2. Load or use shipped map image
+3. Select tools and start annotating
 
 ## Tools
 

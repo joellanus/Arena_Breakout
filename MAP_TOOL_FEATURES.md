@@ -227,3 +227,9 @@ Works with:
 
 **Built for gamers, by gamers.** 🎮
 
+## Integration
+
+- Updater-aware frontend; version shown in footer and update banner
+- CDN-based ZIP delivery (jsDelivr) with GitHub Releases fallback
+- Dev Mode (Ctrl+Shift+D) to enable Author Mode and export base pins JSON
+

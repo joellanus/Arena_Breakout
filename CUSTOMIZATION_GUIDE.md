@@ -296,3 +296,10 @@ Similar to Electron but simpler:
 
 Need more help? Check the main README.md or the inline comments in the code!
 
+## Shipped Maps & Base Pins
+
+- Place map images in `assets/maps/` (e.g., `assets/maps/farm.png`)
+- Place map data JSON in `assets/maps/data/` (e.g., `assets/maps/data/farm.json`)
+- Author Mode (Ctrl+Shift+D → enable Author Mode) lets you place base pins and export JSON directly
+- Commit and push the JSON and images to ship to everyone
+
