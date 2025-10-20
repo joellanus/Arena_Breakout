@@ -405,8 +405,10 @@ addPin = function(x, y) {
     if (authorMode) {
         const catSel = document.getElementById('authorCategory');
         const category = catSel ? catSel.value : 'Keys';
-        const label = prompt('Label for this base pin (optional):', '');
-        draftBasePins.push({ x, y, category, label: label || '' });
+        const label = prompt('Title for this base pin (e.g., "Office 101 Key"):', '') || '';
+        const notes = prompt('Notes/details (where it is, how to access):', '') || '';
+        const image = prompt('Optional image URL (e.g., screenshot) or leave blank:', '') || '';
+        draftBasePins.push({ x, y, category, label, notes, image });
         try { console.log('Draft base pin added', { x, y, category, label }); } catch (_) {}
         updateDraftCounter();
         addClickMarker(x, y);
@@ -952,15 +954,15 @@ function logCanvasInfo(prefix, x, y) {
             let best = null; let bestD2 = Infinity;
             const consider = [];
             // Include draft base pins
-            (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, label:p.label || p.category || 'Pin' }));
+            (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '' }));
             // Include base shipped pins (respect visibility)
             (basePins || []).forEach(p => {
                 const cat = p.category || p.type || 'Misc';
                 if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
-                consider.push({ x:p.x, y:p.y, label:p.label || cat });
+                consider.push({ x:p.x, y:p.y, title:p.label || cat, notes:p.notes || '', image:p.image || '' });
             });
             // Include user pins
-            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, label:p.note || p.type || 'Pin' }));
+            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'' }));
             consider.forEach(p => {
                 const dx = p.x - mx, dy = p.y - my; const d2 = dx*dx + dy*dy;
                 if (d2 < bestD2) { bestD2 = d2; best = p; }
@@ -975,9 +977,11 @@ function logCanvasInfo(prefix, x, y) {
             const my = (e.clientY - rect.top) * (canvas.height / rect.height);
             const hit = pickNearestPin(mx, my);
             if (hit) {
-                // Position tooltip at cursor
                 tooltip.style.display = '';
-                tooltip.textContent = hit.label || 'Pin';
+                tooltip.innerHTML = '' +
+                  '<div class="title">' + escapeHtml(hit.title) + '</div>' +
+                  (hit.notes ? ('<div class="notes">' + escapeHtml(hit.notes) + '</div>') : '') +
+                  (hit.image ? ('<img class="preview" src="' + hit.image + '" alt="preview"/>') : '');
                 const cx = e.clientX - container.getBoundingClientRect().left;
                 const cy = e.clientY - container.getBoundingClientRect().top;
                 tooltip.style.left = cx + 'px';

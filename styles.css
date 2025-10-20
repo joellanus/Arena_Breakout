@@ -380,16 +380,35 @@ footer {
     top: 0;
     left: 0;
     transform: translate(-50%, calc(-100% - 10px));
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.92);
     border: 2px solid #00d4ff;
-    border-radius: 8px;
+    border-radius: 10px;
     color: #fff;
-    padding: 0.5rem 0.75rem;
-    font-size: 1rem;
-    font-weight: 700;
-    white-space: nowrap;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: normal;
+    line-height: 1.35;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.6);
     pointer-events: none;
     z-index: 20;
+    max-width: 320px;
+}
+.pin-tooltip .title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+.pin-tooltip .notes {
+    color: #d0e7ff;
+    font-weight: 500;
+}
+.pin-tooltip img.preview {
+    display: block;
+    max-width: 300px;
+    max-height: 180px;
+    margin-top: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid #333;
 }
 
