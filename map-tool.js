@@ -29,6 +29,34 @@ let visibleBaseCategories = new Set();
 let authorMode = false;
 let draftBasePins = [];
 
+// Debug: temporary click markers for authoring visibility
+let clickMarkers = [];
+function addClickMarker(x, y) {
+    clickMarkers.push({ x, y, t: Date.now() });
+    // keep only last 20 markers
+    if (clickMarkers.length > 20) clickMarkers.shift();
+}
+
+function drawClickMarkers() {
+    const now = Date.now();
+    clickMarkers = clickMarkers.filter(m => now - m.t < 8000);
+    clickMarkers.forEach(m => {
+        const age = (now - m.t) / 8000; // 0..1
+        const alpha = 1 - age;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, alpha);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(m.x - 10, m.y);
+        ctx.lineTo(m.x + 10, m.y);
+        ctx.moveTo(m.x, m.y - 10);
+        ctx.lineTo(m.x, m.y + 10);
+        ctx.stroke();
+        ctx.restore();
+    });
+}
+
 // Hook up Author Mode UI after DOM ready additions
 (function wireAuthorUI(){
     document.addEventListener('DOMContentLoaded', () => {
@@ -314,6 +342,7 @@ addPin = function(x, y) {
         draftBasePins.push({ x, y, category, label: label || '' });
         try { console.log('Draft base pin added', { x, y, category, label }); } catch (_) {}
         updateDraftCounter();
+        addClickMarker(x, y);
         renderCanvas();
         return;
     }
@@ -471,6 +500,7 @@ function renderCanvas() {
     });
     // Finally draw any draft base pins above everything
     drawDraftBasePinsOnTop();
+    drawClickMarkers();
     updateDraftCounter(); // Update counter after rendering
 }
 
