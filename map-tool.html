@@ -296,6 +296,9 @@
                     <!-- Drawing Tools -->
                     <div class="tool-section">
                         <h3>✏️ Tools</h3>
+                        <button class="tool-button" id="toolCursor" onclick="setTool('cursor')">
+                            🖱️ Cursor
+                        </button>
                         <button class="tool-button" id="toolPin" onclick="setTool('pin')">
                             📍 Add Pin
                         </button>
@@ -420,6 +423,13 @@
 
                     <!-- Hover tooltip for pins -->
                     <div id="pinTooltip" class="pin-tooltip" style="display:none;">Tooltip</div>
+                    
+                    <!-- Context menu for pins (right-click) -->
+                    <div id="pinContextMenu" style="display:none; position:absolute; z-index:30; background:#111; border:1px solid #333; border-radius:8px; padding:8px; box-shadow:0 10px 24px rgba(0,0,0,0.5); min-width:160px;">
+                        <div style="font-weight:700; color:#fff; margin-bottom:6px;">Pin Options</div>
+                        <button id="ctxShowDetails" class="tab-btn" style="width:100%; margin-bottom:6px;">🔍 Show Details</button>
+                        <button id="ctxDeletePin" class="tab-btn" style="width:100%; background:#1a1a1a; border-color:#333;">🗑️ Delete Pin</button>
+                    </div>
                 </div>
             </div>
         </main>

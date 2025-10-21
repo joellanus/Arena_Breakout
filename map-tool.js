@@ -320,7 +320,9 @@ function setTool(tool) {
     document.querySelectorAll('.tool-button').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.getElementById('tool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active');
+    const btnId = 'tool' + tool.charAt(0).toUpperCase() + tool.slice(1);
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('active');
     
     // Show/hide relevant sections
     document.getElementById('pinTypesSection').style.display = tool === 'pin' ? 'block' : 'none';
@@ -328,6 +330,7 @@ function setTool(tool) {
     
     // Update info
     const toolNames = {
+        cursor: 'Hover/click pins to inspect',
         pin: 'Click to add a pin',
         draw: 'Click and drag to draw',
         erase: 'Click and drag to erase'
@@ -339,6 +342,8 @@ function setTool(tool) {
         canvas.style.cursor = 'crosshair';
     } else if (tool === 'pin') {
         canvas.style.cursor = 'pointer';
+    } else {
+        canvas.style.cursor = 'default';
     }
 }
 
@@ -376,6 +381,8 @@ function handleMouseDown(e) {
     } else if (currentTool === 'pin') {
         logCanvasInfo('click-pin', x, y);
         addPin(x, y);
+        // Auto switch back to cursor to allow hover/click on pins
+        setTool('cursor');
     } else if (currentTool === 'draw' || currentTool === 'erase') {
         logCanvasInfo('click-draw-start', x, y);
         isDrawing = true;
@@ -1082,6 +1089,7 @@ function logCanvasInfo(prefix, x, y) {
         container.addEventListener('mousemove', (e) => {
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
+            if (currentTool !== 'cursor') { tooltip.style.display = 'none'; return; }
             const hit = pickNearestPin(e);
             if (hit) {
                 tooltip.style.display = '';
@@ -1139,6 +1147,42 @@ function logCanvasInfo(prefix, x, y) {
         });
         container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
         
+        // Context menu for pins (right-click)
+        const ctxMenu = document.getElementById('pinContextMenu');
+        const ctxShow = document.getElementById('ctxShowDetails');
+        const ctxDelete = document.getElementById('ctxDeletePin');
+        container.addEventListener('contextmenu', (e) => {
+            if (!canvas) return;
+            e.preventDefault();
+            if (currentTool !== 'cursor') return;
+            const hit = pickNearestPin(e);
+            if (!hit || !ctxMenu) return;
+            const crect = container.getBoundingClientRect();
+            ctxMenu.style.left = (e.clientX - crect.left) + 'px';
+            ctxMenu.style.top = (e.clientY - crect.top) + 'px';
+            ctxMenu.style.display = '';
+            if (ctxShow) ctxShow.onclick = () => {
+                tooltip.style.display = '';
+                tooltip.innerHTML = '<div class="title">' + escapeHtml(hit.title) + '</div>' +
+                  (hit.category ? '<div class="category" style="color:#ffaa44; font-size:0.9rem; margin-bottom:0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>' : '') +
+                  (hit.notes ? '<div class="notes">' + escapeHtml(hit.notes) + '</div>' : '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>') +
+                  (hit.image ? '<img class="preview" src="' + hit.image + '" alt="preview"/>' : '');
+                tooltip.style.left = ctxMenu.style.left;
+                tooltip.style.top = ctxMenu.style.top;
+                ctxMenu.style.display = 'none';
+            };
+            if (ctxDelete) ctxDelete.onclick = () => {
+                const idx = (draftBasePins || []).findIndex(p => Math.round(p.x)===Math.round(hit.x) && Math.round(p.y)===Math.round(hit.y) && (p.label||'')===(hit.title||''));
+                if (idx >= 0) { draftBasePins.splice(idx,1); renderCanvas(); }
+                ctxMenu.style.display = 'none';
+            };
+        });
+        document.addEventListener('click', (e) => {
+            if (!ctxMenu) return;
+            if (e.target && ctxMenu.contains(e.target)) return;
+            ctxMenu.style.display = 'none';
+        });
+        
         // Add click-to-toggle tooltip functionality
         let lastClickedPinKey = null;
         let tooltipVisible = false;
@@ -1146,6 +1190,7 @@ function logCanvasInfo(prefix, x, y) {
         container.addEventListener('click', (e) => {
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
+            if (currentTool !== 'cursor') return; // pin/draw handled elsewhere
             const hit = pickNearestPin(e);
             
             if (hit) {
