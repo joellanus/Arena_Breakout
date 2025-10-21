@@ -359,28 +359,27 @@ function loadBaseDataForSelectedMap() {
     document.addEventListener('DOMContentLoaded', () => {
         const container = document.querySelector('.map-canvas-container'); const tooltip = document.getElementById('pinTooltip'); if (!container || !tooltip) return;
         const pickNearestPin = (e) => {
+            if (!canvas) return null;
             const rect = canvas.getBoundingClientRect(); const mxScreen = e.clientX - rect.left; const myScreen = e.clientY - rect.top; const scaleX = rect.width / canvas.width; const scaleY = rect.height / canvas.height;
             let best = null; let bestD2 = Infinity; const consider = [];
             (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '', type: 'draft', category: p.category, noteSize: p.noteSize }));
             (basePins || []).forEach(p => { const cat=p.category||p.type||'Misc'; if(visibleBaseCategories.size>0 && !visibleBaseCategories.has(cat)) return; consider.push({ x:p.x, y:p.y, title:p.label || cat, notes:p.notes || p.description || '', image:p.image || '', type:'base', category:cat, noteSize: p.noteSize }); });
-            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'', type:'user' }));
+            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'', type:'user', noteSize: p.noteSize }));
             consider.forEach(p=>{ const px=p.x*scaleX, py=p.y*scaleY; const dx=px-mxScreen, dy=py-myScreen; const d2=dx*dx+dy*dy; if(d2<bestD2){bestD2=d2; best=p;} });
             if (best && bestD2 <= (36*36)) return best; return null;
         };
         const buildTooltip = (hit) => {
             let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
             if (hit.category) content += '<div class="category" style="color:#ffaa44; font-size:0.9rem; margin-bottom:0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
-            const sizeStyle = hit.noteSize ? ` style=\"font-size:${parseInt(hit.noteSize,10)}px\"` : '';
-            if (hit.notes && hit.notes.trim()) content += `<div class="notes"${sizeStyle}>` + escapeHtml(hit.notes) + '</div>'; else content += '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>';
-            if (hit.image && hit.image.trim()) content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
+            const size = parseInt(hit.noteSize || 14, 10);
+            if (hit.notes && String(hit.notes).trim()) content += `<div class=\"notes\" style=\"font-size:${size}px\">` + escapeHtml(hit.notes) + '</div>'; else content += '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>';
+            if (hit.image && String(hit.image).trim()) content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
             return content;
         };
-        container.addEventListener('mousemove', (e) => {
-            if (!canvas) return; const hit = pickNearestPin(e); if (hit) { tooltip.style.display=''; tooltip.innerHTML = buildTooltip(hit); const crect=container.getBoundingClientRect(); const cx=e.clientX - crect.left; const cy=e.clientY - crect.top; tooltip.style.left=cx+'px'; tooltip.style.top=(cy-10)+'px'; } else { tooltip.style.display='none'; }
-        });
+        container.addEventListener('mousemove', (e) => { const hit = pickNearestPin(e); if (hit) { tooltip.style.display=''; tooltip.innerHTML = buildTooltip(hit); const crect=container.getBoundingClientRect(); const cx=e.clientX - crect.left; const cy=e.clientY - crect.top; tooltip.style.left=cx+'px'; tooltip.style.top=(cy-10)+'px'; } else { tooltip.style.display='none'; } });
         container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display='none'; });
         let lastClickedKey=null, tooltipVisible=false;
-        container.addEventListener('click', (e) => { if (!canvas) return; const hit = pickNearestPin(e); if (hit) { const key=(hit.type||'pin')+':' +(hit.category||'')+':'+(Math.round(hit.x)+','+Math.round(hit.y))+':'+(hit.title||''); if (lastClickedKey===key && tooltipVisible) { tooltip.style.display='none'; tooltipVisible=false; lastClickedKey=null; } else { tooltip.style.display=''; tooltip.innerHTML = buildTooltip(hit); const crect=container.getBoundingClientRect(); const cx=e.clientX - crect.left; const cy=e.clientY - crect.top; tooltip.style.left=cx+'px'; tooltip.style.top=(cy-10)+'px'; tooltipVisible=true; lastClickedKey=key; } } else { tooltip.style.display='none'; tooltipVisible=false; lastClickedKey=null; } });
+        container.addEventListener('click', (e) => { const hit = pickNearestPin(e); if (hit) { const key=(hit.type||'pin')+':' +(hit.category||'')+':'+(Math.round(hit.x)+','+Math.round(hit.y))+':'+(hit.title||''); if (lastClickedKey===key && tooltipVisible) { tooltip.style.display='none'; tooltipVisible=false; lastClickedKey=null; } else { tooltip.style.display=''; tooltip.innerHTML = buildTooltip(hit); const crect=container.getBoundingClientRect(); const cx=e.clientX - crect.left; const cy=e.clientY - crect.top; tooltip.style.left=cx+'px'; tooltip.style.top=(cy-10)+'px'; tooltipVisible=true; lastClickedKey=key; } } else { tooltip.style.display='none'; tooltipVisible=false; lastClickedKey=null; } });
     });
 })();
 
