@@ -2,7 +2,7 @@
 // Handles drawing, pins, notes, and save/load functionality
 
 let canvas, ctx;
-let currentTool = null;
+let currentTool = 'cursor';
 let isDrawing = false;
 let isPanning = false;
 let isSpacePressed = false;
@@ -29,144 +29,12 @@ let showBuildings = true;
 let draftBuildings = [];
 let authorAddingBuilding = false;
 
-// Authoring state
-let authorMode = true; // editing enabled for all users
+// Authoring state (always enabled)
+let authorMode = true;
 let draftBasePins = [];
-
-// Dev mode flag (no longer gating authoring UI)
-let devMode = false;
-
-// Debug: temporary click markers for authoring visibility
-let clickMarkers = [];
-function addClickMarker(x, y) {
-    clickMarkers.push({ x, y, t: Date.now() });
-    // keep only last 20 markers
-    if (clickMarkers.length > 20) clickMarkers.shift();
-}
-
-function drawClickMarkers() {
-    const now = Date.now();
-    clickMarkers = clickMarkers.filter(m => now - m.t < 8000);
-    clickMarkers.forEach(m => {
-        const age = (now - m.t) / 8000; // 0..1
-        const alpha = 1 - age;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, alpha);
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(m.x - 10, m.y);
-        ctx.lineTo(m.x + 10, m.y);
-        ctx.moveTo(m.x, m.y - 10);
-        ctx.lineTo(m.x, m.y + 10);
-        ctx.stroke();
-        ctx.restore();
-    });
-}
-
-// Hook up Author Mode UI after DOM ready additions
-(function wireAuthorUI(){
-    document.addEventListener('DOMContentLoaded', () => {
-        const catSel = document.getElementById('authorCategory');
-        const exportBtn = document.getElementById('exportBasePinsBtn');
-        const clearDraftBtn = document.getElementById('clearDraftPinsBtn');
-        const addBuildingBtn = document.getElementById('addBuildingLabelBtn');
-        const clearDraftBuildingsBtn = document.getElementById('clearDraftBuildingsBtn');
-        // Always enabled; default tool to pin for convenience
-        try { setTool('pin'); } catch(_) {}
-        if (exportBtn) {
-            exportBtn.addEventListener('click', exportBasePinsJSON);
-        }
-        if (clearDraftBtn) {
-            clearDraftBtn.addEventListener('click', () => {
-                if (draftBasePins.length === 0) return;
-                if (confirm('Clear all draft base pins?')) {
-                    draftBasePins = [];
-                    updateDraftCounter();
-                    renderCanvas();
-                }
-            });
-        }
-        if (addBuildingBtn) {
-            addBuildingBtn.addEventListener('click', () => {
-                authorAddingBuilding = true;
-                setTool('cursor');
-                alert('Click on the map to place a building label.');
-            });
-        }
-        if (clearDraftBuildingsBtn) {
-            clearDraftBuildingsBtn.addEventListener('click', () => {
-                if (draftBuildings.length === 0) return;
-                if (confirm('Clear draft building labels?')) { draftBuildings = []; renderCanvas(); }
-            });
-        }
-    });
-})();
-
-// Author image attach (copies into assets/maps/images/ via FS Access and assigns relative path)
-(function wireAuthorImageAttach(){
-    document.addEventListener('DOMContentLoaded', () => {
-        const attachBtn = document.getElementById('attachImageBtn');
-        const fileInput = document.getElementById('authorImageInput');
-        if (!attachBtn || !fileInput) return;
-        attachBtn.addEventListener('click', async () => {
-            if (!authorMode || draftBasePins.length === 0) { alert('Create a draft pin first.'); return; }
-            fileInput.click();
-        });
-        fileInput.addEventListener('change', async (e) => {
-            const file = e.target.files && e.target.files[0];
-            if (!file) return;
-            try {
-                const dirHandle = await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html). The image will be copied to assets/maps/images/.');
-                const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
-                if (!hasIndex) {
-                    const proceed = confirm('Selected folder does not contain index.html. Continue anyway?');
-                    if (!proceed) return;
-                }
-                const assetsDir = await dirHandle.getDirectoryHandle('assets', { create: true });
-                const mapsDir = await assetsDir.getDirectoryHandle('maps', { create: true });
-                const imagesDir = await mapsDir.getDirectoryHandle('images', { create: true });
-                const targetName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-                const fileHandle = await imagesDir.getFileHandle(targetName, { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(file);
-                await writable.close();
-                const last = draftBasePins[draftBasePins.length - 1];
-                last.image = `assets/maps/images/${targetName}`;
-                renderCanvas();
-                alert('Image attached to the last draft pin. Remember to Export JSON and commit the image.');
-            } catch (err) {
-                console.error(err);
-                alert('Attach failed: ' + err.message);
-            } finally {
-                fileInput.value = '';
-            }
-        });
-    });
-})();
 
 // Cached project folder handle (not persisted across browser restarts)
 let projectFolderHandle = null;
-
-(function wireProjectFolderSetter(){
-    document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('setProjectFolderBtn');
-        if (!btn) return;
-        btn.addEventListener('click', async () => {
-            try {
-                if (!('showDirectoryPicker' in window)) { alert('Use a Chromium-based browser to set the project folder.'); return; }
-                alert('Select the project folder (contains index.html).');
-                projectFolderHandle = await window.showDirectoryPicker();
-                const hasIndex = await projectFolderHandle.getFileHandle('index.html').then(() => true).catch(() => false);
-                if (!hasIndex) alert('Selected folder does not contain index.html. You can still export, but please double-check.');
-                else alert('Project folder set. Exports and images will save without reprompting.');
-            } catch (err) {
-                console.error(err);
-                alert('Failed to set project folder: ' + err.message);
-            }
-        });
-    });
-})();
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -177,13 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('mapUpload').addEventListener('change', handleMapUpload);
     
     // Set up drawing settings
-    document.getElementById('brushSize').addEventListener('input', function() {
-        document.getElementById('brushSizeValue').textContent = this.value;
-    });
-    
-    document.getElementById('drawOpacity').addEventListener('input', function() {
-        document.getElementById('opacityValue').textContent = this.value;
-    });
+    const bs = document.getElementById('brushSize');
+    const doEl = document.getElementById('drawOpacity');
+    if (bs) bs.addEventListener('input', function() { const el = document.getElementById('brushSizeValue'); if (el) el.textContent = this.value; });
+    if (doEl) doEl.addEventListener('input', function() { const el = document.getElementById('opacityValue'); if (el) el.textContent = this.value; });
     
     // Canvas event listeners
     canvas.addEventListener('mousedown', handleMouseDown);
@@ -191,35 +56,9 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('mouseleave', handleMouseUp);
 
-    // Ensure Base Layers section and Building Names toggle are visible immediately
-    (function ensureBaseLayersUI(){
-        const togglesRoot = document.getElementById('baseLayerToggles');
-        const section = document.getElementById('baseLayersSection');
-        if (!togglesRoot || !section) return;
-        section.style.display = 'block';
-        // Add buildings toggle if not already present
-        if (!document.getElementById('bl-buildings')) {
-            const bwrap = document.createElement('div');
-            bwrap.style.display = 'flex'; bwrap.style.alignItems = 'center'; bwrap.style.gap = '0.5rem'; bwrap.style.marginBottom = '0.5rem'; bwrap.style.padding = '0.5rem'; bwrap.style.borderRadius = '6px'; bwrap.style.backgroundColor = 'rgba(100, 180, 255, 0.08)'; bwrap.style.border = '1px solid rgba(100, 180, 255, 0.3)';
-            const binput = document.createElement('input'); binput.type = 'checkbox'; binput.id = 'bl-buildings'; binput.checked = showBuildings; binput.style.transform = 'scale(1.2)'; binput.style.accentColor = '#66b3ff';
-            const blabel = document.createElement('label'); blabel.htmlFor = 'bl-buildings'; blabel.textContent = '🏢 Building Names'; blabel.style.color = '#b8d9ff'; blabel.style.fontWeight = '600'; blabel.style.cursor = 'pointer';
-            binput.addEventListener('change', () => { showBuildings = !!binput.checked; renderCanvas(); });
-            bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);
-        }
-    })();
-
     // Keyboard for pan (Space)
-    document.addEventListener('keydown', function(e) {
-        if (e.code === 'Space') {
-            isSpacePressed = true;
-        }
-    });
-    document.addEventListener('keyup', function(e) {
-        if (e.code === 'Space') {
-            isSpacePressed = false;
-            isPanning = false;
-        }
-    });
+    document.addEventListener('keydown', function(e) { if (e.code === 'Space') isSpacePressed = true; });
+    document.addEventListener('keyup', function(e) { if (e.code === 'Space') { isSpacePressed = false; isPanning = false; } });
 
     // Map selection
     const mapSelect = document.getElementById('mapSelect');
@@ -228,11 +67,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (savedSelected) selectedMap = savedSelected;
         mapSelect.value = selectedMap;
         mapSelect.addEventListener('change', function() {
-            // Save current before switching
             saveMapData();
             selectedMap = this.value;
             localStorage.setItem('mapTool:selectedMap', selectedMap);
-            // Clear current view and load per-map data
             pins = [];
             drawingHistory = [];
             mapImage = null;
@@ -248,301 +85,104 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load base shipped data and saved data
     loadBaseDataForSelectedMap();
     loadMapData();
-    
-    console.log('Interactive Map Tool loaded!');
 });
 
-// Ensure clicks land even if CSS transforms/pointer-events interfere
-(function bindContainerEvents(){
-    document.addEventListener('DOMContentLoaded', () => {
-        const container = document.querySelector('.map-canvas-container');
-        if (!container) return;
-        container.addEventListener('mousedown', (e) => {
-            if (!canvas) return;
-            // ignore clicks on buttons/controls inside container
-            const target = e.target;
-            if (target && (target.closest('.zoom-controls') || target.closest('.map-info'))) return;
-            // Compute canvas-space coordinates
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-            // Simulate direct canvas mousedown
-            // set flag and call underlying logic
-            if (isSpacePressed) {
-                isPanning = true;
-                panStart = { x: e.clientX, y: e.clientY };
-                offsetStart = { x: offsetX, y: offsetY };
-            } else if (currentTool === 'pin') {
-                logCanvasInfo('container-click-pin', x, y);
-                addPin(x, y);
-            } else if (currentTool === 'draw' || currentTool === 'erase') {
-                logCanvasInfo('container-click-draw-start', x, y);
-                isDrawing = true;
-                drawingHistory.push({
-                    tool: currentTool,
-                    color: document.getElementById('drawColor').value,
-                    size: parseInt(document.getElementById('brushSize').value),
-                    opacity: parseInt(document.getElementById('drawOpacity').value) / 100,
-                    points: [{x, y}]
-                });
-            }
-        });
-        container.addEventListener('mousemove', (e) => {
-            if (!canvas) return;
-            if (!isDrawing && !isPanning) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-            if (isPanning) {
-                const dx = e.clientX - panStart.x;
-                const dy = e.clientY - panStart.y;
-                offsetX = offsetStart.x + dx;
-                offsetY = offsetStart.y + dy;
-                applyZoom();
-                return;
-            }
-            const currentDrawing = drawingHistory[drawingHistory.length - 1];
-            currentDrawing.points.push({x, y});
-            renderCanvas();
-        });
-        ['mouseup','mouseleave'].forEach(ev => {
-            container.addEventListener(ev, () => {
-                if (isPanning) { isPanning = false; return; }
-                if (isDrawing) { isDrawing = false; saveMapData(); }
-            });
-        });
-    });
-})();
+// Set active tool
+function setTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.tool-button').forEach(btn => { btn.classList.remove('active'); });
+    const btnId = 'tool' + tool.charAt(0).toUpperCase() + tool.slice(1);
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('active');
+
+    // Update info
+    const toolNames = { cursor: 'Hover/click pins to inspect', pin: 'Click to add a pin', draw: 'Click and drag to draw', erase: 'Click and drag to erase' };
+    const info = document.getElementById('toolInfo');
+    if (info) info.textContent = toolNames[tool] || 'Select a tool';
+
+    // Update cursor
+    if (tool === 'draw' || tool === 'erase') canvas.style.cursor = 'crosshair';
+    else if (tool === 'pin') canvas.style.cursor = 'pointer';
+    else canvas.style.cursor = 'default';
+}
 
 // Handle map image upload
 function handleMapUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
     const reader = new FileReader();
     reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-            // Compress to JPEG and keep as base
             try {
                 const off = document.createElement('canvas');
-                off.width = img.width;
-                off.height = img.height;
-                const octx = off.getContext('2d');
-                octx.drawImage(img, 0, 0);
+                off.width = img.width; off.height = img.height;
+                const octx = off.getContext('2d'); octx.drawImage(img, 0, 0);
                 baseMapImageData = off.toDataURL('image/jpeg', 0.8);
-            } catch (err) {
-                // Fallback to original
-                baseMapImageData = e.target.result;
-            }
+            } catch (err) { baseMapImageData = e.target.result; }
             const baseImg = new Image();
             baseImg.onload = function() {
                 mapImage = baseImg;
-
-                // Set canvas size to match image
-                canvas.width = baseImg.width;
-                canvas.height = baseImg.height;
-
-                // Show canvas, hide message
+                canvas.width = baseImg.width; canvas.height = baseImg.height;
                 canvas.style.display = 'block';
                 document.getElementById('noMapMessage').style.display = 'none';
-
-                // Render everything
                 renderCanvas();
                 saveMapData();
-
-                console.log('Map loaded:', baseImg.width, 'x', baseImg.height);
             };
             baseImg.src = baseMapImageData;
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
-
-// Set active tool
-function setTool(tool) {
-    currentTool = tool;
-    
-    // Update button states
-    document.querySelectorAll('.tool-button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    const btnId = 'tool' + tool.charAt(0).toUpperCase() + tool.slice(1);
-    const btn = document.getElementById(btnId);
-    if (btn) btn.classList.add('active');
-    
-    // Show/hide relevant sections
-    document.getElementById('pinTypesSection').style.display = tool === 'pin' ? 'block' : 'none';
-    document.getElementById('drawSettingsSection').style.display = tool === 'draw' ? 'block' : 'none';
-    
-    // Update info
-    const toolNames = {
-        cursor: 'Hover/click pins to inspect',
-        pin: 'Click to add a pin',
-        draw: 'Click and drag to draw',
-        erase: 'Click and drag to erase'
-    };
-    document.getElementById('toolInfo').textContent = toolNames[tool] || 'Select a tool';
-    
-    // Update cursor
-    if (tool === 'draw' || tool === 'erase') {
-        canvas.style.cursor = 'crosshair';
-    } else if (tool === 'pin') {
-        canvas.style.cursor = 'pointer';
-    } else {
-        canvas.style.cursor = 'default';
-    }
-}
-
-// Set marker type for pins (supports setMarkerType(el,type,color) or setMarkerType(type,color))
-function setMarkerType(a, b, c) {
-    let el = null, type = null, color = null;
-    if (c !== undefined) {
-        el = a; type = b; color = c;
-    } else {
-        type = a; color = b;
-    }
-    currentMarkerType = type;
-    currentMarkerColor = color;
-    // Update active state only if element is provided
-    document.querySelectorAll('.marker-type').forEach(marker => {
-        marker.classList.remove('active');
-    });
-    if (el && el.classList) el.classList.add('active');
+        }; img.src = e.target.result;
+    }; reader.readAsDataURL(file);
 }
 
 // Mouse event handlers
 function handleMouseDown(e) {
     if (!mapImage) return;
-    // Prevent bubbling to container listener which re-triggers pin/draw logic
-    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-    
+    if (e && e.stopPropagation) e.stopPropagation();
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    
-    if (isSpacePressed) {
-        isPanning = true;
-        panStart = { x: e.clientX, y: e.clientY };
-        offsetStart = { x: offsetX, y: offsetY };
-    } else if (currentTool === 'pin') {
-        logCanvasInfo('click-pin', x, y);
+    if (isSpacePressed) { isPanning = true; panStart = { x: e.clientX, y: e.clientY }; offsetStart = { x: offsetX, y: offsetY }; }
+    else if (currentTool === 'pin') {
         addPin(x, y);
-        // Auto switch back to cursor to allow hover/click on pins
         setTool('cursor');
     } else if (authorMode && authorAddingBuilding) {
         const name = prompt('Building name:','');
-        if (name && name.trim()) {
-            draftBuildings.push({ x, y, name: name.trim() });
-            renderCanvas();
-        }
+        if (name && name.trim()) { draftBuildings.push({ x, y, name: name.trim() }); renderCanvas(); autoSave(); }
         authorAddingBuilding = false;
     } else if (currentTool === 'draw' || currentTool === 'erase') {
-        logCanvasInfo('click-draw-start', x, y);
         isDrawing = true;
-        drawingHistory.push({
-            tool: currentTool,
-            color: document.getElementById('drawColor').value,
-            size: parseInt(document.getElementById('brushSize').value),
-            opacity: parseInt(document.getElementById('drawOpacity').value) / 100,
-            points: [{x, y}]
-        });
+        drawingHistory.push({ tool: currentTool, color: document.getElementById('drawColor').value, size: parseInt(document.getElementById('brushSize').value), opacity: parseInt(document.getElementById('drawOpacity').value) / 100, points: [{x, y}] });
     }
 }
 
 function handleMouseMove(e) {
     if (!mapImage) return;
-    // Prevent bubbling to container listener which can duplicate drawing
-    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-    if (isPanning) {
-        const dx = e.clientX - panStart.x;
-        const dy = e.clientY - panStart.y;
-        offsetX = offsetStart.x + dx;
-        offsetY = offsetStart.y + dy;
-        applyZoom();
-        return;
-    }
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (isPanning) { const dx = e.clientX - panStart.x; const dy = e.clientY - panStart.y; offsetX = offsetStart.x + dx; offsetY = offsetStart.y + dy; applyZoom(); return; }
     if (!isDrawing) return;
-    
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
     const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-    
-    // Add point to current drawing
-    const currentDrawing = drawingHistory[drawingHistory.length - 1];
-    currentDrawing.points.push({x, y});
-    
+    const currentDrawing = drawingHistory[drawingHistory.length - 1]; currentDrawing.points.push({x, y});
     renderCanvas();
-    // Debounced save during drawing
     if (saveDebounceId) clearTimeout(saveDebounceId);
-    saveDebounceId = setTimeout(() => {
-        saveMapData();
-    }, 750);
+    saveDebounceId = setTimeout(() => { saveMapData(); }, 750);
 }
 
-function handleMouseUp(e) {
-    // Prevent bubbling to container listener which can double-save/end draws
-    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
-    if (isPanning) {
-        isPanning = false;
-        return;
-    }
-    if (isDrawing) {
-        isDrawing = false;
-        saveMapData();
-    }
-}
+function handleMouseUp(e) { if (e && e.stopPropagation) e.stopPropagation(); if (isPanning) { isPanning = false; return; } if (isDrawing) { isDrawing = false; saveMapData(); } }
 
-// Add a pin with note
+// Add a pin (user pins)
 function addPin(x, y) {
     const note = prompt('Add a note for this pin (optional):');
-    
-    const pin = {
-        id: Date.now(),
-        x: x,
-        y: y,
-        type: currentMarkerType,
-        color: currentMarkerColor,
-        note: note || ''
-    };
-    
-    pins.push(pin);
-    updatePinsList();
-    renderCanvas();
-    saveMapData();
-}
-
-// Override addPin to handle author mode for base pins creation
-const _addPin_original = addPin;
-addPin = function(x, y) {
-    if (authorMode) {
-        const catSel = document.getElementById('authorCategory');
-        const category = catSel ? catSel.value : 'Keys';
-        const label = prompt('Title for this base pin (e.g., "Office 101 Key"):', '') || '';
-        const notes = prompt('Notes/details (where it is, how to access):', '') || '';
-        const image = prompt('Optional image URL (e.g., screenshot) or leave blank:', '') || '';
-        draftBasePins.push({ x, y, category, label, notes, image });
-        try { console.log('Draft base pin added', { x, y, category, label }); } catch (_) {}
-        updateDraftCounter();
-        addClickMarker(x, y);
-        renderCanvas();
-        return;
-    }
-    // user pins (default)
-    _addPin_original(x, y);
+    const pin = { id: Date.now(), x, y, type: currentMarkerType, color: currentMarkerColor, note: note || '' };
+    pins.push(pin); updatePinsList(); renderCanvas(); saveMapData();
 }
 
 // Update pins list in sidebar
 function updatePinsList() {
-    const pinsList = document.getElementById('pinsList');
-    document.getElementById('pinCount').textContent = pins.length;
-    
-    if (pins.length === 0) {
-        pinsList.innerHTML = '<p style="color: #666; font-size: 0.85rem; text-align: center;">No pins yet</p>';
-        return;
-    }
-    
+    const pinsList = document.getElementById('pinsList'); if (!pinsList) return;
+    const pc = document.getElementById('pinCount'); if (pc) pc.textContent = pins.length;
+    if (pins.length === 0) { pinsList.innerHTML = '<p style="color: #666; font-size: 0.85rem; text-align: center;">No pins yet</p>'; return; }
     pinsList.innerHTML = pins.map(pin => `
         <div class="pin-item" style="--pin-color: ${pin.color}" onclick="focusPin(${pin.id})">
             <div class="pin-item-header">
@@ -554,466 +194,151 @@ function updatePinsList() {
     `).join('');
 }
 
-// Focus on a specific pin
-function focusPin(pinId) {
-    const pin = pins.find(p => p.id === pinId);
-    if (!pin) return;
-    
-    // Flash the pin
-    renderCanvas();
-    
-    // Draw a pulsing circle around the pin
-    ctx.strokeStyle = '#00d4ff';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(pin.x, pin.y, 30, 0, Math.PI * 2);
-    ctx.stroke();
-}
+function focusPin(pinId) { const pin = pins.find(p => p.id === pinId); if (!pin) return; renderCanvas(); ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(pin.x, pin.y, 30, 0, Math.PI * 2); ctx.stroke(); }
+function deletePin(pinId) { pins = pins.filter(p => p.id !== pinId); updatePinsList(); renderCanvas(); saveMapData(); }
 
-// Delete a pin
-function deletePin(pinId) {
-    pins = pins.filter(p => p.id !== pinId);
-    updatePinsList();
-    renderCanvas();
-    saveMapData();
-}
-
-// Clear all pins
-function clearAllPins() {
-    if (pins.length === 0) return;
-    
-    if (confirm('Clear all pins?')) {
-        pins = [];
-        updatePinsList();
-        renderCanvas();
-        saveMapData();
-    }
-}
-
-// Clear all drawings
-function clearDrawing() {
-    if (drawingHistory.length === 0) return;
-    
-    if (confirm('Clear all drawings?')) {
-        drawingHistory = [];
-        renderCanvas();
-        saveMapData();
-    }
-}
-
-// Clear entire map
-function clearMap() {
-    if (!mapImage) return;
-    
-    if (confirm('Clear entire map (including pins and drawings)?')) {
-        mapImage = null;
-        pins = [];
-        drawingHistory = [];
-        canvas.style.display = 'none';
-        document.getElementById('noMapMessage').style.display = 'block';
-        updatePinsList();
-        saveMapData();
-    }
-}
+// Clear drawing/pins
+function clearAllPins() { if (pins.length === 0) return; if (confirm('Clear all pins?')) { pins = []; updatePinsList(); renderCanvas(); saveMapData(); } }
+function clearDrawing() { if (drawingHistory.length === 0) return; if (confirm('Clear all drawings?')) { drawingHistory = []; renderCanvas(); saveMapData(); } }
 
 // Render the entire canvas
 function renderCanvas() {
     if (!mapImage) return;
-    
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw map image
     ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
-    // Ensure we draw overlays normally on top of the map
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 1;
-    // DEBUG: visible overlay rectangle to verify drawing
-    ctx.save();
-    ctx.strokeStyle = '#ff00ff';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(20, 20, 80, 80);
-    ctx.restore();
+    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
 
-    // Draw building labels (shipped)
+    // Buildings
     drawBuildings();
-    // Draw base pins (shipped)
+    // Base pins
     drawBasePins();
-    
-    // Draw all drawing strokes
-    drawingHistory.forEach(drawing => {
-        if (drawing.points.length < 2) return;
-        
-        ctx.strokeStyle = drawing.tool === 'erase' ? 'rgba(0,0,0,1)' : drawing.color;
-        ctx.lineWidth = drawing.size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.globalAlpha = drawing.tool === 'erase' ? 1 : drawing.opacity;
-        ctx.globalCompositeOperation = drawing.tool === 'erase' ? 'destination-out' : 'source-over';
-        
-        ctx.beginPath();
-        ctx.moveTo(drawing.points[0].x, drawing.points[0].y);
-        
-        for (let i = 1; i < drawing.points.length; i++) {
-            ctx.lineTo(drawing.points[i].x, drawing.points[i].y);
-        }
-        
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-        ctx.globalCompositeOperation = 'source-over';
+
+    // Draw drawings
+    drawingHistory.forEach(d => {
+        if (d.points.length < 2) return;
+        ctx.strokeStyle = d.tool === 'erase' ? 'rgba(0,0,0,1)' : d.color;
+        ctx.lineWidth = d.size; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.globalAlpha = d.tool === 'erase' ? 1 : d.opacity; ctx.globalCompositeOperation = d.tool === 'erase' ? 'destination-out' : 'source-over';
+        ctx.beginPath(); ctx.moveTo(d.points[0].x, d.points[0].y);
+        for (let i=1;i<d.points.length;i++) ctx.lineTo(d.points[i].x, d.points[i].y);
+        ctx.stroke(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     });
-    
-    // Draw all user pins on top
+
+    // User pins
     pins.forEach(pin => {
-        // Draw pin circle
-        ctx.fillStyle = pin.color;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        
-        // Draw pin border
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, 12, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // Draw pin label
-        if (pin.note) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            ctx.fillRect(pin.x + 15, pin.y - 10, 20, 20);
-            
-            ctx.fillStyle = '#fff';
-            ctx.font = '12px Arial';
-            ctx.fillText('📝', pin.x + 17, pin.y + 5);
-        }
+        ctx.fillStyle = pin.color; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(pin.x, pin.y, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(pin.x, pin.y, 12, 0, Math.PI * 2); ctx.stroke();
+        if (pin.note) { ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; ctx.fillRect(pin.x + 15, pin.y - 10, 20, 20); ctx.fillStyle = '#fff'; ctx.font = '12px Arial'; ctx.fillText('📝', pin.x + 17, pin.y + 5); }
     });
-    // Finally draw any draft base pins above everything
+
+    // Draft base pins on top
     drawDraftBasePinsOnTop();
-    drawDraftBuildingsOnTop();
-    drawClickMarkers();
-    updateDraftCounter(); // Update counter after rendering
 }
 
 // Draw base pins (shipped)
 function drawBasePins() {
-    // Show base pins when they exist and categories are visible
     if (!basePins || basePins.length === 0) return;
-    const categoryColor = {
-        'Keys': '#ffaa00',
-        'Spawns': '#44ff44',
-        'Extracts': '#00d4ff'
-    };
+    const categoryColor = { 'Keys': '#ffaa00', 'Spawns': '#44ff44', 'Extracts': '#00d4ff' };
     basePins.forEach(pin => {
         const cat = pin.category || pin.type || 'Misc';
         if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
         const color = pin.color || categoryColor[cat] || '#cccccc';
-        // Diamond shape
-        ctx.save();
-        ctx.translate(pin.x, pin.y);
-        ctx.fillStyle = color;
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, -10);
-        ctx.lineTo(10, 0);
-        ctx.lineTo(0, 10);
-        ctx.lineTo(-10, 0);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-        if (pin.label) {
-            ctx.fillStyle = '#fff';
-            ctx.font = '12px Arial';
-            ctx.fillText(pin.label, pin.x + 14, pin.y + 4);
-        }
+        ctx.save(); ctx.translate(pin.x, pin.y); ctx.fillStyle = color; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(10, 0); ctx.lineTo(0, 10); ctx.lineTo(-10, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+        if (pin.label) { ctx.fillStyle = '#fff'; ctx.font = `${pin.labelSize || 12}px Arial`; ctx.fillText(pin.label, pin.x + 14, pin.y + 4); }
     });
 }
 
-// Draw building name labels
+// Draw buildings
 function drawBuildings() {
-    if (!showBuildings) return;
-    if (!baseBuildings || baseBuildings.length === 0) return;
-    ctx.save();
-    ctx.font = 'bold 18px Segoe UI, Roboto, Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    baseBuildings.forEach(b => {
-        const name = b.name || b.label || '';
-        if (!name) return;
-        // Halo for readability
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        for (let dx=-2; dx<=2; dx++) for (let dy=-2; dy<=2; dy++) {
-            if (dx === 0 && dy === 0) continue;
-            ctx.fillText(name, b.x+dx, b.y+dy);
-        }
-        ctx.fillStyle = '#66b3ff';
-        ctx.fillText(name, b.x, b.y);
-    });
+    if (!showBuildings) return; if (!baseBuildings || baseBuildings.length === 0) return;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font = 'bold 18px Segoe UI, Roboto, Arial';
+    baseBuildings.forEach(b => { const name=b.name||b.label||''; if (!name) return; ctx.fillStyle='rgba(0,0,0,0.55)'; for(let dx=-2;dx<=2;dx++) for(let dy=-2;dy<=2;dy++){ if(dx===0&&dy===0) continue; ctx.fillText(name,b.x+dx,b.y+dy);} ctx.fillStyle='#66b3ff'; ctx.fillText(name,b.x,b.y); });
     ctx.restore();
 }
 
 function drawDraftBasePinsOnTop() {
     if (!draftBasePins || draftBasePins.length === 0) return;
-    const categoryColor = {
-        'Keys': '#ffaa00',
-        'Spawns': '#44ff44',
-        'Extracts': '#00d4ff'
-    };
-    const categoryEmoji = {
-        'Keys': '🔑',
-        'Spawns': '🧍',
-        'Extracts': '🚪'
-    };
+    const categoryColor = { 'Keys': '#ffaa00', 'Spawns': '#44ff44', 'Extracts': '#00d4ff', 'Loot':'#44ff44','Vantage':'#44ffff','Danger':'#ff4444' };
     draftBasePins.forEach(pin => {
         const color = categoryColor[pin.category] || '#cccccc';
-        // Outer glow
-        ctx.save();
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, 18, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.fill();
-        ctx.restore();
-        // Inner circle
-        ctx.beginPath();
-        ctx.arc(pin.x, pin.y, 14, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        // Emoji label
-        const emoji = categoryEmoji[pin.category] || '📍';
-        ctx.font = '16px Segoe UI Emoji, Apple Color Emoji';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(emoji, pin.x - 7, pin.y + 6);
-        if (pin.label) {
-            ctx.fillStyle = '#fff';
-            ctx.font = '12px Arial';
-            ctx.fillText(pin.label, pin.x + 20, pin.y + 6);
-        }
+        ctx.beginPath(); ctx.arc(pin.x, pin.y, 14, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+        if (pin.label) { ctx.fillStyle = '#fff'; ctx.font = `${pin.labelSize || 12}px Arial`; ctx.fillText(pin.label, pin.x + 20, pin.y + 6); }
     });
-}
-
-// Draw draft buildings (authoring)
-function drawDraftBuildingsOnTop() {
-    if (!draftBuildings || draftBuildings.length === 0) return;
-    ctx.save();
-    ctx.font = 'bold 18px Segoe UI, Roboto, Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    draftBuildings.forEach(b => {
-        const name = b.name || '';
-        if (!name) return;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        for (let dx=-2; dx<=2; dx++) for (let dy=-2; dy<=2; dy++) {
-            if (dx === 0 && dy === 0) continue;
-            ctx.fillText(name, b.x+dx, b.y+dy);
-        }
-        ctx.fillStyle = '#ffc266';
-        ctx.fillText(name, b.x, b.y);
-    });
-    ctx.restore();
 }
 
 // Zoom functions
-function zoomIn() {
-    zoomLevel *= 1.2;
-    applyZoom();
-}
-
-function zoomOut() {
-    zoomLevel /= 1.2;
-    if (zoomLevel < 0.5) zoomLevel = 0.5;
-    applyZoom();
-}
-
-function resetZoom() {
-    zoomLevel = 1;
-    offsetX = 0;
-    offsetY = 0;
-    applyZoom();
-}
-
-function applyZoom() {
-    canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${zoomLevel})`;
-    const label = document.getElementById('zoomLabel');
-    if (label) label.textContent = Math.round(zoomLevel * 100) + '%';
-}
+function zoomIn() { zoomLevel *= 1.2; applyZoom(); }
+function zoomOut() { zoomLevel /= 1.2; if (zoomLevel < 0.5) zoomLevel = 0.5; applyZoom(); }
+function resetZoom() { zoomLevel = 1; offsetX = 0; offsetY = 0; applyZoom(); }
+function applyZoom() { canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${zoomLevel})`; const label = document.getElementById('zoomLabel'); if (label) label.textContent = Math.round(zoomLevel * 100) + '%'; }
 
 // Save map data to localStorage
-function getStorageKey() {
-    return 'mapToolData:' + selectedMap;
-}
-
+function getStorageKey() { return 'mapToolData:' + selectedMap; }
 function saveMapData() {
-    const data = {
-        pins: pins,
-        drawings: drawingHistory,
-        baseMapImageData: baseMapImageData
-    };
-    try {
-        localStorage.setItem(getStorageKey(), JSON.stringify(data));
-        console.log('Map data saved for', selectedMap);
-    } catch (e) {
-        console.error('Failed to save map data:', e);
-        alert('Failed to save map data. Your browser storage might be full.');
-    }
+    const data = { pins: pins, drawings: drawingHistory, baseMapImageData: baseMapImageData };
+    try { localStorage.setItem(getStorageKey(), JSON.stringify(data)); } catch (e) { console.error('Failed to save map data:', e); }
 }
 
 // Load map data from localStorage
 function loadMapData() {
     try {
         const saved = localStorage.getItem(getStorageKey());
-        if (!saved) {
-            // No local save: load shipped image
-            loadDefaultMapImage();
-            updatePinsList();
-            return;
-        }
+        if (!saved) { loadDefaultMapImage(); updatePinsList(); return; }
         const data = JSON.parse(saved);
-        pins = data.pins || [];
-        drawingHistory = data.drawings || [];
-        baseMapImageData = data.baseMapImageData || null;
-        if (baseMapImageData) {
-            const img = new Image();
-            img.onload = function() {
-                mapImage = img;
-                canvas.width = img.width;
-                canvas.height = img.height;
-                canvas.style.display = 'block';
-                document.getElementById('noMapMessage').style.display = 'none';
-                renderCanvas();
-                updatePinsList();
-            };
-            img.src = baseMapImageData;
-        } else {
-            // Fallback to shipped image
-            loadDefaultMapImage();
-            updatePinsList();
-        }
-        console.log('Map data loaded for', selectedMap);
-    } catch (e) {
-        console.error('Failed to load map data:', e);
-    }
+        pins = data.pins || []; drawingHistory = data.drawings || []; baseMapImageData = data.baseMapImageData || null;
+        if (baseMapImageData) { const img = new Image(); img.onload = function(){ mapImage = img; canvas.width=img.width; canvas.height=img.height; canvas.style.display='block'; document.getElementById('noMapMessage').style.display='none'; renderCanvas(); updatePinsList(); }; img.src = baseMapImageData; }
+        else { loadDefaultMapImage(); updatePinsList(); }
+    } catch (e) { console.error('Failed to load map data:', e); }
 }
 
-// Export map as image
-function exportMapImage() {
-    if (!mapImage) {
-        alert('No map loaded to export');
-        return;
-    }
-    
-    // Create a temporary link to download the canvas
-    const link = document.createElement('a');
-    link.download = 'project-breakpoint-map-' + Date.now() + '.png';
-    link.href = canvas.toDataURL();
-    link.click();
-    
-    console.log('Map exported');
-}
-
-// Utility function to escape HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Keyboard shortcuts
-document.addEventListener('keydown', function(e) {
-    if (e.key === '1') setTool('pin');
-    if (e.key === '2') setTool('draw');
-    if (e.key === '3') setTool('erase');
-    if (e.ctrlKey && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        saveMapData();
-        alert('Map saved!');
-    }
-    if (e.ctrlKey && e.key.toLowerCase() === 'z' && drawingHistory.length > 0) {
-        e.preventDefault();
-        drawingHistory.pop();
-        renderCanvas();
-        saveMapData();
-    }
-});
-
-console.log('Map Tool JS loaded. Keyboard shortcuts: 1=Pin, 2=Draw, 3=Erase, Space=Pan, Ctrl+S=Save, Ctrl+Z=Undo');
-
-// Load default image for selected map from assets
+// Default image loader
 function loadDefaultMapImage() {
-    const slug = getMapSlug(selectedMap);
-    const path = `assets/maps/${slug}.png`;
-    const img = new Image();
-    img.onload = function() {
-        // Compress to JPEG and set as base
-        try {
-            const off = document.createElement('canvas');
-            off.width = img.width;
-            off.height = img.height;
-            const octx = off.getContext('2d');
-            octx.drawImage(img, 0, 0);
-            baseMapImageData = off.toDataURL('image/jpeg', 0.8);
-        } catch (err) {
-            baseMapImageData = path; // fallback
-        }
-        const baseImg = new Image();
-        baseImg.onload = function() {
-            mapImage = baseImg;
-            canvas.width = baseImg.width;
-            canvas.height = baseImg.height;
-            canvas.style.display = 'block';
-            document.getElementById('noMapMessage').style.display = 'none';
-            renderCanvas();
-            saveMapData();
-            console.log('Default map loaded for', selectedMap);
-        };
-        baseImg.src = baseMapImageData;
-    };
-    img.onerror = function() {
-        alert('Default image not found at ' + path + '. Place an image there or use Load Map Image.');
-    };
-    img.src = path;
+    const slug = getMapSlug(selectedMap); const path = `assets/maps/${slug}.png`;
+    const img = new Image(); img.onload = function(){ try{ const off=document.createElement('canvas'); off.width=img.width; off.height=img.height; const octx=off.getContext('2d'); octx.drawImage(img,0,0); baseMapImageData=off.toDataURL('image/jpeg',0.8);}catch(err){ baseMapImageData=path; } const baseImg=new Image(); baseImg.onload=function(){ mapImage=baseImg; canvas.width=baseImg.width; canvas.height=baseImg.height; canvas.style.display='block'; document.getElementById('noMapMessage').style.display='none'; renderCanvas(); saveMapData(); }; baseImg.src=baseMapImageData; }; img.onerror=function(){ alert('Default image not found at ' + path + '.'); }; img.src=path; }
+
+function getMapSlug(name) { const mapToSlug = { 'Farm': 'farm', 'Valley': 'valley', 'Northridge': 'northridge', 'Armory': 'armory', 'TV Station': 'tv-station' }; return mapToSlug[name] || name.toLowerCase().replace(/\s+/g, '-'); }
+
+// Project folder selection
+(function wireProjectFolderSetter(){ document.addEventListener('DOMContentLoaded', () => { const btn=document.getElementById('setProjectFolderBtn'); if(!btn) return; btn.addEventListener('click', async()=>{ try{ if(!('showDirectoryPicker'in window)){ alert('Use a Chromium-based browser.'); return;} alert('Select the project folder (contains index.html).'); projectFolderHandle = await window.showDirectoryPicker(); const hasIndex=await projectFolderHandle.getFileHandle('index.html').then(()=>true).catch(()=>false); if(!hasIndex) alert('Selected folder does not contain index.html.'); else alert('Project folder set.'); }catch(err){ console.error(err); alert('Failed to set project folder: '+err.message);} }); }); })();
+
+async function getProjectFolderHandleOrPrompt(message) { if (projectFolderHandle) return projectFolderHandle; if (!('showDirectoryPicker' in window)) throw new Error('Browser does not support folder selection.'); if (message) alert(message); const dir = await window.showDirectoryPicker(); projectFolderHandle = dir; return dir; }
+
+// Author image attach
+(function wireAuthorImageAttach(){ document.addEventListener('DOMContentLoaded', () => { const attachBtn=document.getElementById('attachImageBtn'); const fileInput=document.getElementById('authorImageInput'); if(!attachBtn||!fileInput) return; attachBtn.addEventListener('click', async()=>{ if (draftBasePins.length===0) { alert('Create a pin first.'); return; } fileInput.click(); }); fileInput.addEventListener('change', async(e)=>{ const file=e.target.files&&e.target.files[0]; if(!file) return; try{ const dirHandle=await getProjectFolderHandleOrPrompt('Select project folder. Image will be copied to assets/maps/images/.'); const hasIndex=await dirHandle.getFileHandle('index.html').then(()=>true).catch(()=>false); if(!hasIndex){ const proceed=confirm('Selected folder does not contain index.html. Continue?'); if(!proceed) return; } const assetsDir=await dirHandle.getDirectoryHandle('assets',{create:true}); const mapsDir=await assetsDir.getDirectoryHandle('maps',{create:true}); const imagesDir=await mapsDir.getDirectoryHandle('images',{create:true}); const targetName=`${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`; const fileHandle=await imagesDir.getFileHandle(targetName,{create:true}); const writable=await fileHandle.createWritable(); await writable.write(file); await writable.close(); const last=draftBasePins[draftBasePins.length-1]; last.image=`assets/maps/images/${targetName}`; renderCanvas(); await autoSave(); }catch(err){ console.error(err); alert('Attach failed: '+err.message);} finally{ fileInput.value=''; } }); }); })();
+
+// Export base pins JSON (used by auto-save)
+async function exportBasePinsJSON() {
+    const merged = (basePins || []).concat(draftBasePins || []);
+    const usedCats = new Set((baseCategories && baseCategories.length ? baseCategories : ['Keys','Spawns','Extracts']));
+    merged.forEach(p => usedCats.add(p.category || p.type || 'Misc'));
+    const payload = { map: selectedMap, image: `assets/maps/${getMapSlug(selectedMap)}.png`, categories: Array.from(usedCats), buildings: (baseBuildings || []).concat(draftBuildings || []), basePins: merged };
+    try { localStorage.setItem(getShippedDataKey(), JSON.stringify(payload)); } catch(_) {}
+    const dirHandle = await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html). The tool will write into assets/maps/data/.');
+    const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
+    if (!hasIndex) { const proceed = confirm('Selected folder does not contain index.html. Continue anyway?'); if (!proceed) return; }
+    const assetsDir = await dirHandle.getDirectoryHandle('assets', { create: true });
+    const mapsDir = await assetsDir.getDirectoryHandle('maps', { create: true });
+    const dataDir = await mapsDir.getDirectoryHandle('data', { create: true });
+    const fileName = `${getMapSlug(selectedMap)}.json`;
+    const fileHandle = await dataDir.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable(); await writable.write(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })); await writable.close();
+    basePins = merged; baseBuildings = payload.buildings; draftBasePins = []; draftBuildings = []; renderCanvas();
 }
 
-function getMapSlug(name) {
-    const mapToSlug = {
-        'Farm': 'farm',
-        'Valley': 'valley',
-        'Northridge': 'northridge',
-        'Armory': 'armory',
-        'TV Station': 'tv-station'
-    };
-    return mapToSlug[name] || name.toLowerCase().replace(/\s+/g, '-');
-}
+async function autoSave() { try { await exportBasePinsJSON(); } catch (e) { console.error('Auto-save failed:', e); } }
 
+// Shipped data cache key
+function getShippedDataKey() { return 'mapTool:shippedData:' + getMapSlug(selectedMap); }
+
+// Load base data
 function loadBaseDataForSelectedMap() {
     const slug = getMapSlug(selectedMap);
-    const url = `assets/maps/data/${slug}.json?t=${Date.now()}`; // cache-bust to ensure fresh local load
-    basePins = [];
-    baseCategories = [];
-    baseBuildings = [];
-    const togglesRoot = document.getElementById('baseLayerToggles');
-    const section = document.getElementById('baseLayersSection');
-    if (togglesRoot) togglesRoot.innerHTML = '';
-    if (section) section.style.display = 'block';
-    // Add buildings toggle baseline
-    if (togglesRoot) {
-        const bwrap = document.createElement('div');
-        bwrap.style.display = 'flex'; bwrap.style.alignItems = 'center'; bwrap.style.gap = '0.5rem'; bwrap.style.marginBottom = '0.5rem'; bwrap.style.padding = '0.5rem'; bwrap.style.borderRadius = '6px'; bwrap.style.backgroundColor = 'rgba(100, 180, 255, 0.08)'; bwrap.style.border = '1px solid rgba(100, 180, 255, 0.3)';
-        const binput = document.createElement('input'); binput.type = 'checkbox'; binput.id = 'bl-buildings'; binput.checked = showBuildings; binput.style.transform = 'scale(1.2)'; binput.style.accentColor = '#66b3ff';
-        const blabel = document.createElement('label'); blabel.htmlFor = 'bl-buildings'; blabel.textContent = '🏢 Building Names'; blabel.style.color = '#b8d9ff'; blabel.style.fontWeight = '600'; blabel.style.cursor = 'pointer';
-        binput.addEventListener('change', () => { showBuildings = !!binput.checked; renderCanvas(); });
-        bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);
-    }
+    const url = `assets/maps/data/${slug}.json?t=${Date.now()}`; // cache-bust
+    basePins = []; baseCategories = []; baseBuildings = [];
+    const togglesRoot = document.getElementById('baseLayerToggles'); const section = document.getElementById('baseLayersSection');
+    if (togglesRoot) togglesRoot.innerHTML = ''; if (section) section.style.display = 'block';
+    if (togglesRoot) { const bwrap=document.createElement('div'); bwrap.style.display='flex'; bwrap.style.alignItems='center'; bwrap.style.gap='0.5rem'; bwrap.style.marginBottom='0.5rem'; bwrap.style.padding='0.5rem'; bwrap.style.borderRadius='6px'; bwrap.style.backgroundColor='rgba(100, 180, 255, 0.08)'; bwrap.style.border='1px solid rgba(100, 180, 255, 0.3)'; const binput=document.createElement('input'); binput.type='checkbox'; binput.id='bl-buildings'; binput.checked=showBuildings; binput.style.transform='scale(1.2)'; binput.style.accentColor='#66b3ff'; const blabel=document.createElement('label'); blabel.htmlFor='bl-buildings'; blabel.textContent='🏢 Building Names'; blabel.style.color='#b8d9ff'; blabel.style.fontWeight='600'; blabel.style.cursor='pointer'; binput.addEventListener('change',()=>{ showBuildings=!!binput.checked; renderCanvas();}); bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);} 
     const applyData = (data) => {
         if (!data) return false;
         basePins = Array.isArray(data.basePins) ? data.basePins : [];
@@ -1021,512 +346,61 @@ function loadBaseDataForSelectedMap() {
         baseBuildings = Array.isArray(data.buildings) ? data.buildings : [];
         const visKey = 'mapTool:visibleCats:' + selectedMap;
         const saved = localStorage.getItem(visKey);
-        if (saved) {
-            try { visibleBaseCategories = new Set(JSON.parse(saved)); } catch (_) { visibleBaseCategories = new Set(baseCategories); }
-        } else {
-            visibleBaseCategories = new Set(baseCategories);
-        }
-        if (section && togglesRoot) {
-            section.style.display = 'block';
-            baseCategories.forEach(cat => {
-                const id = 'bl-' + cat.replace(/[^a-z0-9]/ig, '').toLowerCase();
-                const wrapper = document.createElement('div');
-                wrapper.style.display = 'flex'; wrapper.style.alignItems = 'center'; wrapper.style.gap = '0.5rem'; wrapper.style.marginBottom = '0.5rem'; wrapper.style.padding = '0.5rem'; wrapper.style.borderRadius = '6px'; wrapper.style.backgroundColor = 'rgba(68, 255, 68, 0.1)'; wrapper.style.border = '1px solid rgba(68, 255, 68, 0.3)';
-                const input = document.createElement('input'); input.type = 'checkbox'; input.id = id; input.checked = visibleBaseCategories.has(cat); input.style.transform = 'scale(1.2)'; input.style.accentColor = '#44ff44';
-                const label = document.createElement('label'); label.htmlFor = id; const categoryEmojis = { 'Keys': '🔑', 'Spawns': '📍', 'Extracts': '🚪' }; label.textContent = `${categoryEmojis[cat] || '📍'} ${cat}`; label.style.color = '#88cc88'; label.style.fontWeight = '600'; label.style.cursor = 'pointer';
-                input.addEventListener('change', () => {
-                    if (input.checked) visibleBaseCategories.add(cat); else visibleBaseCategories.delete(cat);
-                    localStorage.setItem(visKey, JSON.stringify(Array.from(visibleBaseCategories)));
-                    renderCanvas();
-                });
-                wrapper.appendChild(input); wrapper.appendChild(label); togglesRoot.appendChild(wrapper);
-            });
-        }
-        renderCanvas();
-        return true;
+        if (saved) { try { visibleBaseCategories = new Set(JSON.parse(saved)); } catch (_) { visibleBaseCategories = new Set(baseCategories); } }
+        else visibleBaseCategories = new Set(baseCategories);
+        if (section && togglesRoot) { section.style.display='block'; baseCategories.forEach(cat=>{ const id='bl-'+cat.replace(/[^a-z0-9]/ig,'').toLowerCase(); const wrapper=document.createElement('div'); wrapper.style.display='flex'; wrapper.style.alignItems='center'; wrapper.style.gap='0.5rem'; wrapper.style.marginBottom='0.5rem'; wrapper.style.padding='0.5rem'; wrapper.style.borderRadius='6px'; wrapper.style.backgroundColor='rgba(68, 255, 68, 0.1)'; wrapper.style.border='1px solid rgba(68, 255, 68, 0.3)'; const input=document.createElement('input'); input.type='checkbox'; input.id=id; input.checked=visibleBaseCategories.has(cat); input.style.transform='scale(1.2)'; input.style.accentColor='#44ff44'; const label=document.createElement('label'); label.htmlFor=id; const categoryEmojis={ 'Keys':'🔑','Spawns':'📍','Extracts':'🚪' }; label.textContent=`${categoryEmojis[cat]||'📍'} ${cat}`; label.style.color='#88cc88'; label.style.fontWeight='600'; label.style.cursor='pointer'; input.addEventListener('change',()=>{ if(input.checked) visibleBaseCategories.add(cat); else visibleBaseCategories.delete(cat); localStorage.setItem(visKey, JSON.stringify(Array.from(visibleBaseCategories))); renderCanvas(); }); wrapper.appendChild(input); wrapper.appendChild(label); togglesRoot.appendChild(wrapper); }); }
+        renderCanvas(); return true;
     };
-    fetch(url, { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-            if (data) {
-                applyData(data);
-                try { localStorage.setItem(getShippedDataKey(), JSON.stringify(data)); } catch(_) {}
-                return;
-            }
-            // Fallback to cached shipped data
-            try {
-                const cached = localStorage.getItem(getShippedDataKey());
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (applyData(parsed)) return;
-                }
-            } catch (_) {}
-            // No data available
-            console.warn('No base data found for', slug);
-        })
-        .catch(() => {
-            // Fallback on error
-            try {
-                const cached = localStorage.getItem(getShippedDataKey());
-                if (cached) {
-                    const parsed = JSON.parse(cached);
-                    applyData(parsed);
-                }
-            } catch (_) {}
-        });
+    fetch(url, { cache: 'no-store' }).then(r=>r.ok?r.json():null).then(data=>{ if (data) { applyData(data); try{ localStorage.setItem(getShippedDataKey(), JSON.stringify(data)); }catch(_){} return; } try{ const cached=localStorage.getItem(getShippedDataKey()); if(cached){ const parsed=JSON.parse(cached); if(applyData(parsed)) return; } }catch(_){} console.warn('No base data found for', slug); }).catch(()=>{ try{ const cached=localStorage.getItem(getShippedDataKey()); if(cached){ const parsed=JSON.parse(cached); applyData(parsed); } }catch(_){} });
 }
 
-async function getProjectFolderHandleOrPrompt(message) {
-    if (projectFolderHandle) return projectFolderHandle;
-    if (!('showDirectoryPicker' in window)) throw new Error('Browser does not support folder selection.');
-    if (message) alert(message);
-    const dir = await window.showDirectoryPicker();
-    projectFolderHandle = dir;
-    return dir;
-}
-
-async function exportBasePinsJSON() {
-    try {
-        const merged = (basePins || []).concat(draftBasePins || []);
-        const usedCats = new Set((baseCategories && baseCategories.length ? baseCategories : ['Keys','Spawns','Extracts']));
-        merged.forEach(p => usedCats.add(p.category || p.type || 'Misc'));
-        const payload = {
-            map: selectedMap,
-            image: `assets/maps/${getMapSlug(selectedMap)}.png`,
-            categories: Array.from(usedCats),
-            buildings: (baseBuildings || []).concat(draftBuildings || []),
-            basePins: merged
-        };
-        // Cache shipped data locally for reliable reloads
-        try { localStorage.setItem(getShippedDataKey(), JSON.stringify(payload)); } catch(_) {}
-        const dirHandle = await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html). The tool will write into assets/maps/data/.');
-        const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
-        if (!hasIndex) {
-            const proceed = confirm('Selected folder does not contain index.html. Continue anyway?');
-            if (!proceed) return;
-        }
-        const assetsDir = await dirHandle.getDirectoryHandle('assets', { create: true });
-        const mapsDir = await assetsDir.getDirectoryHandle('maps', { create: true });
-        const dataDir = await mapsDir.getDirectoryHandle('data', { create: true });
-        const fileName = `${getMapSlug(selectedMap)}.json`;
-        const fileHandle = await dataDir.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
-        await writable.close();
-        alert('Exported base pins to assets/maps/data/' + fileName + '\nCommit and push to ship these to everyone.');
-        basePins = merged;
-        baseBuildings = payload.buildings;
-        draftBasePins = [];
-        draftBuildings = [];
-        renderCanvas();
-    } catch (err) {
-        console.error(err);
-        alert('Export failed: ' + err.message);
-    }
-}
-
-function updateDraftCounter() {
-    const el = document.getElementById('draftCount');
-    if (el) el.textContent = 'Draft pins: ' + (draftBasePins ? draftBasePins.length : 0);
-}
-
-// Sanity logging
-function logCanvasInfo(prefix, x, y) {
-    try { console.log(prefix, { canvasWidth: canvas && canvas.width, canvasHeight: canvas && canvas.height, x, y, tool: currentTool, authorMode }); } catch(_) {}
-}
-
-// Tooltip hover for pins
+// Tooltip hover for pins (always on hover or click)
 (function wirePinTooltip(){
     document.addEventListener('DOMContentLoaded', () => {
-        const container = document.querySelector('.map-canvas-container');
-        const tooltip = document.getElementById('pinTooltip');
-        if (!container || !tooltip) return;
+        const container = document.querySelector('.map-canvas-container'); const tooltip = document.getElementById('pinTooltip'); if (!container || !tooltip) return;
         const pickNearestPin = (e) => {
-            // Screen-space hit testing that respects CSS zoom/pan
-            const rect = canvas.getBoundingClientRect();
-            const mxScreen = e.clientX - rect.left;
-            const myScreen = e.clientY - rect.top;
-            const scaleX = rect.width / canvas.width;
-            const scaleY = rect.height / canvas.height;
-
-            let best = null; let bestD2 = Infinity;
-            const consider = [];
-            // Include draft base pins (author mode pins)
-            (draftBasePins || []).forEach(p => {
-                consider.push({ 
-                    x:p.x, y:p.y, 
-                    title:p.label || p.category || 'Pin', 
-                    notes:p.notes || '', 
-                    image:p.image || '',
-                    type: 'draft',
-                    category: p.category
-                });
-            });
-            // Include base shipped pins (respect visibility)
-            (basePins || []).forEach(p => {
-                const cat = p.category || p.type || 'Misc';
-                if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
-                consider.push({ 
-                    x:p.x, y:p.y, 
-                    title:p.label || cat, 
-                    notes:p.notes || p.description || '', 
-                    image:p.image || '',
-                    type: 'base',
-                    category: cat
-                });
-            });
-            // Include user pins (always allowed types)
+            const rect = canvas.getBoundingClientRect(); const mxScreen = e.clientX - rect.left; const myScreen = e.clientY - rect.top; const scaleX = rect.width / canvas.width; const scaleY = rect.height / canvas.height;
+            let best = null; let bestD2 = Infinity; const consider = [];
+            (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '', type: 'draft', category: p.category, noteSize: p.noteSize }));
+            (basePins || []).forEach(p => { const cat=p.category||p.type||'Misc'; if(visibleBaseCategories.size>0 && !visibleBaseCategories.has(cat)) return; consider.push({ x:p.x, y:p.y, title:p.label || cat, notes:p.notes || p.description || '', image:p.image || '', type:'base', category:cat, noteSize: p.noteSize }); });
             (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'', type:'user' }));
-
-            // Debug logging
-            if (consider.length > 0) {
-                try { console.log('Hit-test pins (screen)', { mxScreen, myScreen, count: consider.length }); } catch(_) {}
-            }
-
-            consider.forEach(p => {
-                const px = p.x * scaleX;
-                const py = p.y * scaleY;
-                const dx = px - mxScreen;
-                const dy = py - myScreen;
-                const d2 = dx*dx + dy*dy;
-                if (d2 < bestD2) { bestD2 = d2; best = p; }
-            });
-
-            // Threshold in screen pixels
-            const thresholdPx = 36; // feels good on typical screens
-            if (best && bestD2 <= (thresholdPx*thresholdPx)) {
-                try { console.log('Nearest pin (screen):', best.title, 'd=', Math.sqrt(bestD2).toFixed(1)); } catch(_) {}
-                return best;
-            }
-            return null;
+            consider.forEach(p=>{ const px=p.x*scaleX, py=p.y*scaleY; const dx=px-mxScreen, dy=py-myScreen; const d2=dx*dx+dy*dy; if(d2<bestD2){bestD2=d2; best=p;} });
+            if (best && bestD2 <= (36*36)) return best; return null;
+        };
+        const buildTooltip = (hit) => {
+            let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
+            if (hit.category) content += '<div class="category" style="color:#ffaa44; font-size:0.9rem; margin-bottom:0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
+            const sizeStyle = hit.noteSize ? ` style=\"font-size:${parseInt(hit.noteSize,10)}px\"` : '';
+            if (hit.notes && hit.notes.trim()) content += `<div class="notes"${sizeStyle}>` + escapeHtml(hit.notes) + '</div>'; else content += '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>';
+            if (hit.image && hit.image.trim()) content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
+            return content;
         };
         container.addEventListener('mousemove', (e) => {
-            if (!canvas) return;
-            const rect = canvas.getBoundingClientRect();
-            if (currentTool !== 'cursor') { tooltip.style.display = 'none'; return; }
-            const hit = pickNearestPin(e);
-            if (hit) {
-                tooltip.style.display = '';
-                
-                // Build tooltip content
-                let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
-                
-                // Add category info if available
-                if (hit.category) {
-                    content += '<div class="category" style="color: #ffaa44; font-size: 0.9rem; margin-bottom: 0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
-                }
-                
-                // Add notes or default message
-                if (hit.notes && hit.notes.trim()) {
-                    content += '<div class="notes">' + escapeHtml(hit.notes) + '</div>';
-                } else {
-                    content += '<div class="notes" style="color: #888; font-style: italic;">No additional details available</div>';
-                }
-                
-                // Add image if available
-                if (hit.image && hit.image.trim()) {
-                    content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
-                }
-                
-                tooltip.innerHTML = content;
-                
-                // Better positioning relative to container
-                const containerRect = container.getBoundingClientRect();
-                const cx = e.clientX - containerRect.left;
-                const cy = e.clientY - containerRect.top;
-                
-                // Position tooltip above cursor, but keep it within container bounds
-                let tooltipX = cx;
-                let tooltipY = cy - 10; // 10px above cursor
-                
-                // Ensure tooltip stays within container
-                const tooltipWidth = 320; // max-width from CSS
-                const tooltipHeight = 200; // estimated height
-                
-                if (tooltipX + tooltipWidth/2 > containerRect.width) {
-                    tooltipX = containerRect.width - tooltipWidth/2;
-                }
-                if (tooltipX - tooltipWidth/2 < 0) {
-                    tooltipX = tooltipWidth/2;
-                }
-                if (tooltipY - tooltipHeight < 0) {
-                    tooltipY = cy + 20; // show below cursor instead
-                }
-                
-                tooltip.style.left = tooltipX + 'px';
-                tooltip.style.top = tooltipY + 'px';
-            } else {
-                tooltip.style.display = 'none';
-            }
+            if (!canvas) return; const hit = pickNearestPin(e); if (hit) { tooltip.style.display=''; tooltip.innerHTML = buildTooltip(hit); const crect=container.getBoundingClientRect(); const cx=e.clientX - crect.left; const cy=e.clientY - crect.top; tooltip.style.left=cx+'px'; tooltip.style.top=(cy-10)+'px'; } else { tooltip.style.display='none'; }
         });
-        container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
-        
-        // Context menu for pins (right-click)
-        const ctxMenu = document.getElementById('pinContextMenu');
-        const ctxShow = document.getElementById('ctxShowDetails');
-        const ctxDelete = document.getElementById('ctxDeletePin');
-        container.addEventListener('contextmenu', (e) => {
-            if (!canvas) return;
-            e.preventDefault();
-            if (currentTool !== 'cursor') return;
-            const hit = pickNearestPin(e);
-            if (!hit || !ctxMenu) return;
-            const crect = container.getBoundingClientRect();
-            ctxMenu.style.left = (e.clientX - crect.left) + 'px';
-            ctxMenu.style.top = (e.clientY - crect.top) + 'px';
-            ctxMenu.style.display = '';
-            if (ctxShow) ctxShow.onclick = () => {
-                tooltip.style.display = '';
-                tooltip.innerHTML = '<div class="title">' + escapeHtml(hit.title) + '</div>' +
-                  (hit.category ? '<div class="category" style="color:#ffaa44; font-size:0.9rem; margin-bottom:0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>' : '') +
-                  (hit.notes ? '<div class="notes">' + escapeHtml(hit.notes) + '</div>' : '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>') +
-                  (hit.image ? '<img class="preview" src="' + hit.image + '" alt="preview"/>' : '');
-                tooltip.style.left = ctxMenu.style.left;
-                tooltip.style.top = ctxMenu.style.top;
-                ctxMenu.style.display = 'none';
-            };
-            if (ctxDelete) ctxDelete.onclick = () => {
-                const idx = (draftBasePins || []).findIndex(p => Math.round(p.x)===Math.round(hit.x) && Math.round(p.y)===Math.round(hit.y) && (p.label||'')===(hit.title||''));
-                if (idx >= 0) { draftBasePins.splice(idx,1); renderCanvas(); }
-                ctxMenu.style.display = 'none';
-            };
-        });
-        document.addEventListener('click', (e) => {
-            if (!ctxMenu) return;
-            if (e.target && ctxMenu.contains(e.target)) return;
-            ctxMenu.style.display = 'none';
-        });
-        
-        // Add click-to-toggle tooltip functionality
-        let lastClickedPinKey = null;
-        let tooltipVisible = false;
-        
-        container.addEventListener('click', (e) => {
-            if (!canvas) return;
-            const rect = canvas.getBoundingClientRect();
-            if (currentTool !== 'cursor') return; // pin/draw handled elsewhere
-            const hit = pickNearestPin(e);
-            
-            if (hit) {
-                // Toggle tooltip on click
-                const key = (hit.type || 'pin') + ':' + (hit.category || '') + ':' + (Math.round(hit.x) + ',' + Math.round(hit.y)) + ':' + (hit.title || '');
-                if (lastClickedPinKey === key && tooltipVisible) {
-                    tooltip.style.display = 'none';
-                    tooltipVisible = false;
-                    lastClickedPinKey = null;
-                } else {
-                    // Show tooltip
-                    tooltip.style.display = '';
-                    
-                    // Build tooltip content
-                    let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
-                    
-                    // Add category info if available
-                    if (hit.category) {
-                        content += '<div class="category" style="color: #ffaa44; font-size: 0.9rem; margin-bottom: 0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
-                    }
-                    
-                    // Add notes or default message
-                    if (hit.notes && hit.notes.trim()) {
-                        content += '<div class="notes">' + escapeHtml(hit.notes) + '</div>';
-                    } else {
-                        content += '<div class="notes" style="color: #888; font-style: italic;">No additional details available</div>';
-                    }
-                    
-                    // Add image if available
-                    if (hit.image && hit.image.trim()) {
-                        content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
-                    }
-                    
-                    tooltip.innerHTML = content;
-                    
-                    // Position tooltip
-                    const containerRect = container.getBoundingClientRect();
-                    const cx = e.clientX - containerRect.left;
-                    const cy = e.clientY - containerRect.top;
-                    
-                    let tooltipX = cx;
-                    let tooltipY = cy - 10;
-                    
-                    const tooltipWidth = 320;
-                    const tooltipHeight = 200;
-                    
-                    if (tooltipX + tooltipWidth/2 > containerRect.width) {
-                        tooltipX = containerRect.width - tooltipWidth/2;
-                    }
-                    if (tooltipX - tooltipWidth/2 < 0) {
-                        tooltipX = tooltipWidth/2;
-                    }
-                    if (tooltipY - tooltipHeight < 0) {
-                        tooltipY = cy + 20;
-                    }
-                    
-                    tooltip.style.left = tooltipX + 'px';
-                    tooltip.style.top = tooltipY + 'px';
-                    
-                    tooltipVisible = true;
-                    lastClickedPinKey = key;
-                }
-            } else {
-                // Clicked away from pins, hide tooltip
-                tooltip.style.display = 'none';
-                tooltipVisible = false;
-                lastClickedPinKey = null;
-            }
-        });
-    });
-})();
-
-(function wireDevModeToggle(){
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.shiftKey && (e.key.toLowerCase() === 'd')) {
-            devMode = !devMode;
-            const authorSection = document.getElementById('authorSection');
-            if (authorSection) authorSection.style.display = devMode ? 'block' : 'none';
-            try { console.log('Dev mode:', devMode); } catch(_) {}
-        }
-    });
-})();
-
-// Layer preset bar wiring
-(function wireLayerPresetBar(){
-    document.addEventListener('DOMContentLoaded', () => {
-        const bar = document.getElementById('layerPresetBar');
-        if (!bar) return;
-        const getVisKey = () => 'mapTool:visibleCats:' + selectedMap;
-        const syncUI = () => {
-            // Sync category checkboxes
-            document.querySelectorAll('#baseLayerToggles input[type="checkbox"]').forEach(chk => {
-                if (chk.id === 'bl-buildings') { chk.checked = showBuildings; return; }
-                const cat = (chk.nextSibling && chk.nextSibling.textContent || '').replace(/^[^A-Za-z]+\s*/, '').trim();
-                chk.checked = visibleBaseCategories.has(cat);
-            });
-            renderCanvas();
-        };
-        bar.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-preset]');
-            if (!btn) return;
-            const preset = btn.getAttribute('data-preset');
-            if (preset === 'all') {
-                baseCategories.forEach(c => visibleBaseCategories.add(c));
-                showBuildings = true;
-            } else if (preset === 'none') {
-                visibleBaseCategories.clear();
-                showBuildings = false;
-            } else if (preset === 'keys') {
-                visibleBaseCategories = new Set(['Keys']);
-            } else if (preset === 'spawns') {
-                visibleBaseCategories = new Set(['Spawns']);
-            } else if (preset === 'extracts') {
-                visibleBaseCategories = new Set(['Extracts']);
-            } else if (preset === 'buildings') {
-                showBuildings = true;
-            }
-            localStorage.setItem(getVisKey(), JSON.stringify(Array.from(visibleBaseCategories)));
-            syncUI();
-        });
+        container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display='none'; });
+        let lastClickedKey=null, tooltipVisible=false;
+        container.addEventListener('click', (e) => { if (!canvas) return; const hit = pickNearestPin(e); if (hit) { const key=(hit.type||'pin')+':' +(hit.category||'')+':'+(Math.round(hit.x)+','+Math.round(hit.y))+':'+(hit.title||''); if (lastClickedKey===key && tooltipVisible) { tooltip.style.display='none'; tooltipVisible=false; lastClickedKey=null; } else { tooltip.style.display=''; tooltip.innerHTML = buildTooltip(hit); const crect=container.getBoundingClientRect(); const cx=e.clientX - crect.left; const cy=e.clientY - crect.top; tooltip.style.left=cx+'px'; tooltip.style.top=(cy-10)+'px'; tooltipVisible=true; lastClickedKey=key; } } else { tooltip.style.display='none'; tooltipVisible=false; lastClickedKey=null; } });
     });
 })();
 
 // Context menu logic and auto-save
 (function wireContextMenu(){
     document.addEventListener('DOMContentLoaded', () => {
-        const container = document.querySelector('.map-canvas-container');
-        const menu = document.getElementById('pinContextMenu');
-        const tooltip = document.getElementById('pinTooltip');
-        if (!container || !menu) return;
-        let ctxTarget = null; // { type:'draft'|'base'|'user', x,y,index? }
-        const positionMenu = (e) => {
-            const rect = container.getBoundingClientRect();
-            menu.style.left = (e.clientX - rect.left) + 'px';
-            menu.style.top = (e.clientY - rect.top) + 'px';
-        };
-        const hitTest = (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-            // Try draft base pins first, then base pins, then user pins
-            const all = [];
-            (draftBasePins||[]).forEach((p,i)=>all.push({src:'draft',i,x:p.x,y:p.y,p}));
-            (basePins||[]).forEach((p,i)=>all.push({src:'base',i,x:p.x,y:p.y,p}));
-            (pins||[]).forEach((p,i)=>all.push({src:'user',i,x:p.x,y:p.y,p}));
-            let best = null, bestD2 = Infinity;
-            all.forEach(it=>{ const dx=it.x-mx,dy=it.y-my; const d2=dx*dx+dy*dy; if(d2<bestD2){bestD2=d2; best=it;} });
-            if (best && bestD2 <= 40*40) return best;
-            return { src:'empty', x:mx, y:my };
-        };
-        container.addEventListener('contextmenu', (e) => {
-            if (!canvas) return;
-            e.preventDefault();
-            tooltip && (tooltip.style.display='none');
-            ctxTarget = hitTest(e);
-            positionMenu(e);
-            menu.style.display = '';
-        });
-        document.addEventListener('click', (e) => {
-            if (menu.contains(e.target)) return;
-            menu.style.display = 'none';
-        });
-        const ensureProject = async () => {
-            try { await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html).'); } catch(_) {}
-        };
-        const addPinAt = async (category, x, y) => {
-            const title = prompt('Title:', '') || '';
-            const notes = prompt('Notes/details:', '') || '';
-            draftBasePins.push({ x, y, category, label:title, notes, image:'' });
-            updateDraftCounter();
-            renderCanvas();
-            await ensureProject();
-            await exportBasePinsJSON(); // auto-save
-        };
-        const doDelete = async (target) => {
-            if (!target) return;
-            if (target.src === 'draft') { draftBasePins.splice(target.i,1); }
-            else if (target.src === 'base') { basePins.splice(target.i,1); }
-            else if (target.src === 'user') { pins.splice(target.i,1); }
-            renderCanvas();
-            await ensureProject();
-            await exportBasePinsJSON();
-        };
-        const doMove = async (target) => {
-            if (!target || target.src==='empty') return;
-            alert('Click the new location for this item.');
-            let moving = true;
-            const onClick = async (ev) => {
-                if (!moving) return; moving=false;
-                const rect = canvas.getBoundingClientRect();
-                const nx = (ev.clientX - rect.left) * (canvas.width / rect.width);
-                const ny = (ev.clientY - rect.top) * (canvas.height / rect.height);
-                if (target.src === 'draft') { draftBasePins[target.i].x = nx; draftBasePins[target.i].y = ny; }
-                else if (target.src === 'base') { basePins[target.i].x = nx; basePins[target.i].y = ny; }
-                else if (target.src === 'user') { pins[target.i].x = nx; pins[target.i].y = ny; }
-                renderCanvas();
-                await ensureProject();
-                await exportBasePinsJSON();
-                container.removeEventListener('click', onClick, true);
-            };
-            container.addEventListener('click', onClick, true);
-        };
-        menu.addEventListener('click', async (e) => {
-            const btn = e.target.closest('button[data-act]');
-            if (!btn) return;
-            const act = btn.getAttribute('data-act');
-            const t = ctxTarget; ctxTarget = null; menu.style.display='none';
-            if (act.startsWith('add-')) {
-                const catMap = { 'add-keys':'Keys','add-spawns':'Spawns','add-extracts':'Extracts','add-loot':'Loot','add-vantage':'Vantage','add-danger':'Danger' };
-                const cat = catMap[act];
-                await addPinAt(cat, t.x, t.y);
-                return;
-            }
-            if (act === 'add-building') {
-                const name = prompt('Building name:','');
-                if (name && name.trim()) { draftBuildings.push({ x:t.x, y:t.y, name:name.trim() }); renderCanvas(); await ensureProject(); await exportBasePinsJSON(); }
-                return;
-            }
-            if (act === 'delete') { await doDelete(t); return; }
-            if (act === 'move') { await doMove(t); return; }
-            if (act === 'show') { /* tooltip will show on hover */ return; }
-        });
+        const container = document.querySelector('.map-canvas-container'); const menu = document.getElementById('pinContextMenu'); const tooltip = document.getElementById('pinTooltip'); if (!container || !menu) return;
+        let ctxTarget = null;
+        const positionMenu = (e) => { const rect=container.getBoundingClientRect(); menu.style.left=(e.clientX-rect.left)+'px'; menu.style.top=(e.clientY-rect.top)+'px'; };
+        const hitTest = (e) => { const rect=canvas.getBoundingClientRect(); const mx=(e.clientX-rect.left)*(canvas.width/rect.width); const my=(e.clientY-rect.top)*(canvas.height/rect.height); const all=[]; (draftBasePins||[]).forEach((p,i)=>all.push({src:'draft',i,x:p.x,y:p.y,p})); (basePins||[]).forEach((p,i)=>all.push({src:'base',i,x:p.x,y:p.y,p})); (pins||[]).forEach((p,i)=>all.push({src:'user',i,x:p.x,y:p.y,p})); let best=null,bestD2=Infinity; all.forEach(it=>{ const dx=it.x-mx,dy=it.y-my; const d2=dx*dx+dy*dy; if(d2<bestD2){bestD2=d2; best=it;} }); if (best && bestD2 <= 40*40) return best; return { src:'empty', x:mx, y:my } };
+        container.addEventListener('contextmenu', (e) => { if (!canvas) return; e.preventDefault(); tooltip&&(tooltip.style.display='none'); ctxTarget = hitTest(e); positionMenu(e); menu.style.display=''; });
+        document.addEventListener('click', (e) => { if (menu.contains(e.target)) return; menu.style.display='none'; });
+        const ensureProject = async () => { try { await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html).'); } catch(_) {} };
+        const addPinAt = async (category, x, y) => { const title=prompt('Title:', '')||''; const notes=prompt('Notes/details:', '')||''; draftBasePins.push({ x, y, category, label:title, notes, image:'', labelSize:12, noteSize:14 }); renderCanvas(); await ensureProject(); await autoSave(); };
+        const editPin = async (target) => { if (!target || target.src==='empty') return; const p = target.p; const newTitle = prompt('Edit title:', p.label || p.type || ''); if (newTitle === null) return; const newNotes = prompt('Edit notes:', p.notes || p.note || ''); if (target.src==='draft'||target.src==='base') { p.label = newTitle; p.notes = newNotes || ''; } else if (target.src==='user') { p.note = newNotes || ''; p.type = newTitle || p.type; } renderCanvas(); await ensureProject(); await autoSave(); };
+        const adjustNoteSize = async (target, delta) => { if (!target || target.src==='empty') return; const p=target.p; let size = p.noteSize || 14; size = Math.max(10, Math.min(32, size + delta)); p.noteSize = size; renderCanvas(); await ensureProject(); await autoSave(); };
+        const adjustLabelSize = async (target, delta) => { if (!target || target.src==='empty') return; const p=target.p; let size = p.labelSize || 12; size = Math.max(10, Math.min(32, size + delta)); p.labelSize = size; renderCanvas(); await ensureProject(); await autoSave(); };
+        const doDelete = async (target) => { if (!target) return; if (target.src === 'draft') { draftBasePins.splice(target.i,1); } else if (target.src === 'base') { basePins.splice(target.i,1); } else if (target.src === 'user') { pins.splice(target.i,1); } renderCanvas(); await ensureProject(); await autoSave(); };
+        const doMove = async (target) => { if (!target || target.src==='empty') return; alert('Click the new location.'); let moving=true; const onClick=async(ev)=>{ if(!moving) return; moving=false; const rect=canvas.getBoundingClientRect(); const nx=(ev.clientX-rect.left)*(canvas.width/rect.width); const ny=(ev.clientY-rect.top)*(canvas.height/rect.height); if (target.src==='draft') { draftBasePins[target.i].x=nx; draftBasePins[target.i].y=ny; } else if (target.src==='base') { basePins[target.i].x=nx; basePins[target.i].y=ny; } else if (target.src==='user') { pins[target.i].x=nx; pins[target.i].y=ny; } renderCanvas(); await ensureProject(); await autoSave(); container.removeEventListener('click', onClick, true); }; container.addEventListener('click', onClick, true); };
+        menu.addEventListener('click', async (e) => { const btn = e.target.closest('button[data-act]'); if (!btn) return; const act=btn.getAttribute('data-act'); const t=ctxTarget; ctxTarget=null; menu.style.display='none'; if (act.startsWith('add-')) { const catMap={ 'add-keys':'Keys','add-spawns':'Spawns','add-extracts':'Extracts','add-loot':'Loot','add-vantage':'Vantage','add-danger':'Danger' }; const cat=catMap[act]; await addPinAt(cat, t.x, t.y); return; } if (act==='add-building') { const name=prompt('Building name:',''); if(name&&name.trim()){ draftBuildings.push({x:t.x,y:t.y,name:name.trim()}); renderCanvas(); await ensureProject(); await autoSave(); } return; } if (act==='delete') { await doDelete(t); return; } if (act==='move') { await doMove(t); return; } if (act==='show') { /* tooltip shows on hover/click */ return; } if (act==='edit') { await editPin(t); return; } if (act==='note-plus') { await adjustNoteSize(t, +2); return; } if (act==='note-minus') { await adjustNoteSize(t, -2); return; } if (act==='label-plus') { await adjustLabelSize(t, +2); return; } if (act==='label-minus') { await adjustLabelSize(t, -2); return; } });
     });
 })();
 
