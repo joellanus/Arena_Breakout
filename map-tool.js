@@ -1020,7 +1020,14 @@ function logCanvasInfo(prefix, x, y) {
         const container = document.querySelector('.map-canvas-container');
         const tooltip = document.getElementById('pinTooltip');
         if (!container || !tooltip) return;
-        const pickNearestPin = (mx, my) => {
+        const pickNearestPin = (e) => {
+            // Screen-space hit testing that respects CSS zoom/pan
+            const rect = canvas.getBoundingClientRect();
+            const mxScreen = e.clientX - rect.left;
+            const myScreen = e.clientY - rect.top;
+            const scaleX = rect.width / canvas.width;
+            const scaleY = rect.height / canvas.height;
+
             let best = null; let bestD2 = Infinity;
             const consider = [];
             // Include draft base pins (author mode pins)
@@ -1048,21 +1055,26 @@ function logCanvasInfo(prefix, x, y) {
                 });
             });
             // Include user pins (always allowed types)
-            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'' }));
-            
+            (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'', type:'user' }));
+
             // Debug logging
             if (consider.length > 0) {
-                console.log('Checking pins near', mx, my, 'found', consider.length, 'pins');
-                console.log('Draft pins:', draftBasePins.length, 'Base pins:', basePins.length, 'User pins:', pins.length);
+                try { console.log('Hit-test pins (screen)', { mxScreen, myScreen, count: consider.length }); } catch(_) {}
             }
-            
+
             consider.forEach(p => {
-                const dx = p.x - mx, dy = p.y - my; const d2 = dx*dx + dy*dy;
+                const px = p.x * scaleX;
+                const py = p.y * scaleY;
+                const dx = px - mxScreen;
+                const dy = py - myScreen;
+                const d2 = dx*dx + dy*dy;
                 if (d2 < bestD2) { bestD2 = d2; best = p; }
             });
-            
-            if (best && bestD2 <= (60*60)) { // Increased threshold to 60px for easier detection
-                console.log('Found nearest pin:', best.title, 'at distance', Math.sqrt(bestD2), 'type:', best.type);
+
+            // Threshold in screen pixels
+            const thresholdPx = 36; // feels good on typical screens
+            if (best && bestD2 <= (thresholdPx*thresholdPx)) {
+                try { console.log('Nearest pin (screen):', best.title, 'd=', Math.sqrt(bestD2).toFixed(1)); } catch(_) {}
                 return best;
             }
             return null;
@@ -1070,9 +1082,7 @@ function logCanvasInfo(prefix, x, y) {
         container.addEventListener('mousemove', (e) => {
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
-            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-            const hit = pickNearestPin(mx, my);
+            const hit = pickNearestPin(e);
             if (hit) {
                 tooltip.style.display = '';
                 
@@ -1130,22 +1140,21 @@ function logCanvasInfo(prefix, x, y) {
         container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
         
         // Add click-to-toggle tooltip functionality
-        let lastClickedPin = null;
+        let lastClickedPinKey = null;
         let tooltipVisible = false;
         
         container.addEventListener('click', (e) => {
             if (!canvas) return;
             const rect = canvas.getBoundingClientRect();
-            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-            const hit = pickNearestPin(mx, my);
+            const hit = pickNearestPin(e);
             
             if (hit) {
                 // Toggle tooltip on click
-                if (lastClickedPin === hit && tooltipVisible) {
+                const key = (hit.type || 'pin') + ':' + (hit.category || '') + ':' + (Math.round(hit.x) + ',' + Math.round(hit.y)) + ':' + (hit.title || '');
+                if (lastClickedPinKey === key && tooltipVisible) {
                     tooltip.style.display = 'none';
                     tooltipVisible = false;
-                    lastClickedPin = null;
+                    lastClickedPinKey = null;
                 } else {
                     // Show tooltip
                     tooltip.style.display = '';
@@ -1197,13 +1206,13 @@ function logCanvasInfo(prefix, x, y) {
                     tooltip.style.top = tooltipY + 'px';
                     
                     tooltipVisible = true;
-                    lastClickedPin = hit;
+                    lastClickedPinKey = key;
                 }
             } else {
                 // Clicked away from pins, hide tooltip
                 tooltip.style.display = 'none';
                 tooltipVisible = false;
-                lastClickedPin = null;
+                lastClickedPinKey = null;
             }
         });
     });
