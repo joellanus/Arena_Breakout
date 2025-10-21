@@ -1405,3 +1405,43 @@ function logCanvasInfo(prefix, x, y) {
     });
 })();
 
+// Layer preset bar wiring
+(function wireLayerPresetBar(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const bar = document.getElementById('layerPresetBar');
+        if (!bar) return;
+        const getVisKey = () => 'mapTool:visibleCats:' + selectedMap;
+        const syncUI = () => {
+            // Sync category checkboxes
+            document.querySelectorAll('#baseLayerToggles input[type="checkbox"]').forEach(chk => {
+                if (chk.id === 'bl-buildings') { chk.checked = showBuildings; return; }
+                const cat = (chk.nextSibling && chk.nextSibling.textContent || '').replace(/^[^A-Za-z]+\s*/, '').trim();
+                chk.checked = visibleBaseCategories.has(cat);
+            });
+            renderCanvas();
+        };
+        bar.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-preset]');
+            if (!btn) return;
+            const preset = btn.getAttribute('data-preset');
+            if (preset === 'all') {
+                baseCategories.forEach(c => visibleBaseCategories.add(c));
+                showBuildings = true;
+            } else if (preset === 'none') {
+                visibleBaseCategories.clear();
+                showBuildings = false;
+            } else if (preset === 'keys') {
+                visibleBaseCategories = new Set(['Keys']);
+            } else if (preset === 'spawns') {
+                visibleBaseCategories = new Set(['Spawns']);
+            } else if (preset === 'extracts') {
+                visibleBaseCategories = new Set(['Extracts']);
+            } else if (preset === 'buildings') {
+                showBuildings = true;
+            }
+            localStorage.setItem(getVisKey(), JSON.stringify(Array.from(visibleBaseCategories)));
+            syncUI();
+        });
+    });
+})();
+
