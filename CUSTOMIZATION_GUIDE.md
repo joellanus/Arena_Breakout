@@ -300,6 +300,6 @@ Need more help? Check the main README.md or the inline comments in the code!
 
 - Place map images in `assets/maps/` (e.g., `assets/maps/farm.png`)
 - Place map data JSON in `assets/maps/data/` (e.g., `assets/maps/data/farm.json`)
-- Author Mode (Ctrl+Shift+D → enable Author Mode) lets you place base pins and export JSON directly
+- Use the map tool’s right-click editing to curate pins/labels and auto-save JSON
 - Commit and push the JSON and images to ship to everyone
 

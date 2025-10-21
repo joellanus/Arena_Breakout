@@ -1,13 +1,13 @@
 # Arena Breakout Helper
 
-A modern, offline HTML app for Arena Breakout. Includes a sleek helper, an interactive map tool, a built‑in self‑update flow (no localhost/servers), and an authoring mode to ship curated pins to all users.
+A modern, offline HTML app for Arena Breakout. Includes a sleek helper, an interactive map tool, and a built‑in self‑update flow (no localhost/servers).
 
 ## Highlights
 
 - Updater: checks `version.json` on main, downloads ZIP from CDN; fallback to GitHub Releases
 - Interactive Map Tool: draw, pins, zoom, export
 - Shipped Base Layers: curated pins per map loaded from `assets/maps/data/<map>.json` with category toggles
-- Author Mode (dev only): place base pins and export JSON directly into the repo folder
+- Always‑on editing: right‑click to add/edit/move/delete pins and building labels; changes auto‑save
 - Hover tooltip: enlarged label when hovering near a pin
 - No server required; everything runs from the filesystem
 
@@ -52,13 +52,12 @@ Troubleshooting updates:
 - CDN can take ~1–2 minutes after a push; warm it by visiting the ZIP URL in a browser
 - If a fetch fails, the alert shows attempted URLs
 
-## Dev Mode and Authoring
+## Editing and Data
 
-- Toggle dev mode: press Ctrl+Shift+D (shows the Author Mode section)
-- Author Mode ON → select category (e.g., Keys, Extracts) → select Pin tool → click the map → enter a label
-- Toggle Base Layers (🧭) to show/hide shipped categories
-- Export Base Pins (JSON): writes `assets/maps/data/<map>.json` via File System Access (select the project folder)
-- Ship curated data by committing that JSON (and any new images in `assets/maps/`)
+- Editing is always on: right‑click the map (empty) to add a pin/label; right‑click a pin to Edit/Move/Delete or adjust text sizes
+- Hover/left‑click a pin to view title, notes, and image; use the inline editor to make changes
+- Toggle Base Layers via chips: Keys, Spawns, Extracts, Buildings
+- Auto‑save writes to `assets/maps/data/<map>.json`; set the Project Folder once in Settings
 
 ## Building and Publishing a Release
 
@@ -100,7 +99,6 @@ Notes:
 
 ## Contributing
 
-- Dev mode: Ctrl+Shift+D
 - Put new maps in `assets/maps/` and add JSON to `assets/maps/data/`
 - Keep `README.md`, `DEVELOPMENT.md`, and `CHANGELOG.md` updated when you change flows
 

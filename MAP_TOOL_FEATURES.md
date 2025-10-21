@@ -231,5 +231,5 @@ Works with:
 
 - Updater-aware frontend; version shown in footer and update banner
 - CDN-based ZIP delivery (jsDelivr) with GitHub Releases fallback
-- Dev Mode (Ctrl+Shift+D) to enable Author Mode and export base pins JSON
+- Always-on editing via right-click; inline editor and inspector for pin details
 

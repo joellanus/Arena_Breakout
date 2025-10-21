@@ -5,9 +5,8 @@ Your personal tactical map planner for Arena Breakout!
 ## New in 1.2+
 
 - Shipped Base Layers: curated pins per map from `assets/maps/data/<map>.json`
-- Category toggles (🧭 Base Layers) to show/hide shipped pins
-- Author Mode (dev only): place curated pins and export JSON directly into the repo
-- Hover tooltip: enlarged label when pointing near a pin
+- Layer chips: show/hide Categories (Keys, Spawns, Extracts) and Buildings
+- Inline editor and floating inspector; hover/click to view details
 
 ## New Workflow
 
@@ -43,11 +42,10 @@ Your personal tactical map planner for Arena Breakout!
 
 ## Tools
 
-### 📍 Add Pin
-- Click anywhere on the map to place a pin
-- Choose pin type: Danger, Loot, Spawn, Objective, Cover, Vantage, Custom
-- Add an optional note (great for tactics!)
-- Click pin in sidebar to focus on it
+### 📍 Add/Edit Pins
+- Right-click empty space → choose a pin category (Keys, Spawns, Extracts, Loot, Vantage, Danger)
+- Left-click a pin to open the Inspector → Edit to change title/notes, sizes, and image
+- Right-click a pin to Move or Delete
 
 **Pin Types:**
 - ⚠️ **Danger Zone** (Red) - Enemy hotspots, dangerous areas
@@ -77,9 +75,7 @@ Your personal tactical map planner for Arena Breakout!
 
 ## Keyboard Shortcuts
 
-- **1** - Switch to Pin tool
-- **2** - Switch to Draw tool
-- **3** - Switch to Erase tool
+- **1/2/3** - Optional drawing tools (Pin/Draw/Erase)
 - **Ctrl+S** - Manual save (auto-saves anyway)
 - **Ctrl+Z** - Undo last drawing stroke
 - **+/-** - Zoom in/out (zoom buttons)
