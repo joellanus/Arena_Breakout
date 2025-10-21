@@ -1023,8 +1023,17 @@ function logCanvasInfo(prefix, x, y) {
         const pickNearestPin = (mx, my) => {
             let best = null; let bestD2 = Infinity;
             const consider = [];
-            // Include draft base pins (dev only)
-            if (devMode) (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '' }));
+            // Include draft base pins (author mode pins)
+            (draftBasePins || []).forEach(p => {
+                consider.push({ 
+                    x:p.x, y:p.y, 
+                    title:p.label || p.category || 'Pin', 
+                    notes:p.notes || '', 
+                    image:p.image || '',
+                    type: 'draft',
+                    category: p.category
+                });
+            });
             // Include base shipped pins (respect visibility)
             (basePins || []).forEach(p => {
                 const cat = p.category || p.type || 'Misc';
@@ -1040,10 +1049,18 @@ function logCanvasInfo(prefix, x, y) {
             });
             // Include user pins (always allowed types)
             (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'' }));
+            
+            // Debug logging
+            if (consider.length > 0) {
+                console.log('Checking pins near', mx, my, 'found', consider.length, 'pins');
+                console.log('Draft pins:', draftBasePins.length, 'Base pins:', basePins.length, 'User pins:', pins.length);
+            }
+            
             consider.forEach(p => {
                 const dx = p.x - mx, dy = p.y - my; const d2 = dx*dx + dy*dy;
                 if (d2 < bestD2) { bestD2 = d2; best = p; }
             });
+            
             if (best && bestD2 <= (60*60)) { // Increased threshold to 60px for easier detection
                 console.log('Found nearest pin:', best.title, 'at distance', Math.sqrt(bestD2), 'type:', best.type);
                 return best;
