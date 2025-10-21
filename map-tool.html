@@ -287,8 +287,9 @@
                     </div>
 
                     <!-- Base Layers (shipped pins) -->
-                    <div class="tool-section" id="baseLayersSection" style="display:none;">
-                        <h3>🧭 Base Layers</h3>
+                    <div class="tool-section" id="baseLayersSection" style="display:none; background: linear-gradient(135deg, #1a2a1a 0%, #0a1a0a 100%); border: 2px solid #2a4a2a;">
+                        <h3 style="color: #44ff44; text-shadow: 0 0 8px rgba(68, 255, 68, 0.3);">🧭 Base Layers</h3>
+                        <p style="color: #88cc88; font-size: 0.85rem; margin-bottom: 0.75rem;">Toggle visibility of shipped map data</p>
                         <div id="baseLayerToggles"></div>
                     </div>
 
@@ -372,18 +373,18 @@
                     </div>
 
                     <!-- Author Mode -->
-                    <div class="tool-section" id="authorSection" style="display:none;">
-                        <h3>🛠️ Author Mode</h3>
+                    <div class="tool-section" id="authorSection" style="display:none; background: linear-gradient(135deg, #2a1a1a 0%, #1a0a0a 100%); border: 2px solid #4a2a2a;">
+                        <h3 style="color: #ffaa44; text-shadow: 0 0 8px rgba(255, 170, 68, 0.3);">🛠️ Author Mode</h3>
                         <label style="display:flex; align-items:center; gap:0.5rem; color:#999; font-size:0.9rem; margin-bottom:0.5rem;">
                             <input type="checkbox" id="authorToggle"> Enable authoring of base pins
                         </label>
-                        <label style="color:#999; font-size:0.85rem; display:block; margin-bottom:0.5rem;">
+                        <label style="color:#ffcc88; font-size:0.85rem; display:block; margin-bottom:0.5rem; font-weight: 600;">
                             Category:
                         </label>
-                        <select id="authorCategory" class="tool-button" style="appearance: none; text-align:left;">
-                            <option>Keys</option>
-                            <option>Spawns</option>
-                            <option>Extracts</option>
+                        <select id="authorCategory" class="tool-button" style="appearance: none; text-align:left; background: #2a2a2a; border: 1px solid #4a4a4a; color: #ffffff;">
+                            <option value="Keys">🔑 Keys</option>
+                            <option value="Spawns">📍 Spawns</option>
+                            <option value="Extracts">🚪 Extracts</option>
                         </select>
                         <button class="tool-button" id="exportBasePinsBtn">💾 Export Base Pins (JSON)</button>
                         <button class="tool-button" id="clearDraftPinsBtn">🗑️ Clear Draft Pins</button>

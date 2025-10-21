@@ -636,7 +636,7 @@ function renderCanvas() {
 
 // Draw base pins (shipped)
 function drawBasePins() {
-    if (!devMode) return; // hide shipped base pins for end users
+    // Always show base pins when they exist and categories are visible
     if (!basePins || basePins.length === 0) return;
     const categoryColor = {
         'Keys': '#ffaa00',
@@ -911,7 +911,7 @@ function loadBaseDataForSelectedMap() {
         } else {
             visibleBaseCategories = new Set(baseCategories);
         }
-        if (devMode && section && togglesRoot && baseCategories.length > 0) {
+        if (section && togglesRoot && baseCategories.length > 0) {
             section.style.display = 'block';
             baseCategories.forEach(cat => {
                 const id = 'bl-' + cat.replace(/[^a-z0-9]/ig, '').toLowerCase();
@@ -919,13 +919,30 @@ function loadBaseDataForSelectedMap() {
                 wrapper.style.display = 'flex';
                 wrapper.style.alignItems = 'center';
                 wrapper.style.gap = '0.5rem';
+                wrapper.style.marginBottom = '0.5rem';
+                wrapper.style.padding = '0.5rem';
+                wrapper.style.borderRadius = '6px';
+                wrapper.style.backgroundColor = 'rgba(68, 255, 68, 0.1)';
+                wrapper.style.border = '1px solid rgba(68, 255, 68, 0.3)';
+                
                 const input = document.createElement('input');
                 input.type = 'checkbox';
                 input.id = id;
                 input.checked = visibleBaseCategories.has(cat);
+                input.style.transform = 'scale(1.2)';
+                input.style.accentColor = '#44ff44';
+                
                 const label = document.createElement('label');
                 label.htmlFor = id;
-                label.textContent = cat;
+                const categoryEmojis = {
+                    'Keys': '🔑',
+                    'Spawns': '📍', 
+                    'Extracts': '🚪'
+                };
+                label.textContent = `${categoryEmojis[cat] || '📍'} ${cat}`;
+                label.style.color = '#88cc88';
+                label.style.fontWeight = '600';
+                label.style.cursor = 'pointer';
                 input.addEventListener('change', () => {
                     if (input.checked) visibleBaseCategories.add(cat); else visibleBaseCategories.delete(cat);
                     localStorage.setItem(visKey, JSON.stringify(Array.from(visibleBaseCategories)));
@@ -1008,8 +1025,8 @@ function logCanvasInfo(prefix, x, y) {
             const consider = [];
             // Include draft base pins (dev only)
             if (devMode) (draftBasePins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.label || p.category || 'Pin', notes:p.notes || '', image:p.image || '' }));
-            // Include base shipped pins (respect visibility, dev only)
-            if (devMode) (basePins || []).forEach(p => {
+            // Include base shipped pins (respect visibility)
+            (basePins || []).forEach(p => {
                 const cat = p.category || p.type || 'Misc';
                 if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
                 consider.push({ x:p.x, y:p.y, title:p.label || cat, notes:p.notes || '', image:p.image || '' });
@@ -1035,10 +1052,32 @@ function logCanvasInfo(prefix, x, y) {
                   '<div class="title">' + escapeHtml(hit.title) + '</div>' +
                   (hit.notes ? ('<div class="notes">' + escapeHtml(hit.notes) + '</div>') : '') +
                   (hit.image ? ('<img class="preview" src="' + hit.image + '" alt="preview"/>') : '');
-                const cx = e.clientX - container.getBoundingClientRect().left;
-                const cy = e.clientY - container.getBoundingClientRect().top;
-                tooltip.style.left = cx + 'px';
-                tooltip.style.top = cy + 'px';
+                
+                // Better positioning relative to container
+                const containerRect = container.getBoundingClientRect();
+                const cx = e.clientX - containerRect.left;
+                const cy = e.clientY - containerRect.top;
+                
+                // Position tooltip above cursor, but keep it within container bounds
+                let tooltipX = cx;
+                let tooltipY = cy - 10; // 10px above cursor
+                
+                // Ensure tooltip stays within container
+                const tooltipWidth = 320; // max-width from CSS
+                const tooltipHeight = 200; // estimated height
+                
+                if (tooltipX + tooltipWidth/2 > containerRect.width) {
+                    tooltipX = containerRect.width - tooltipWidth/2;
+                }
+                if (tooltipX - tooltipWidth/2 < 0) {
+                    tooltipX = tooltipWidth/2;
+                }
+                if (tooltipY - tooltipHeight < 0) {
+                    tooltipY = cy + 20; // show below cursor instead
+                }
+                
+                tooltip.style.left = tooltipX + 'px';
+                tooltip.style.top = tooltipY + 'px';
             } else {
                 tooltip.style.display = 'none';
             }
