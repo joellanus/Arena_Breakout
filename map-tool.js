@@ -125,10 +125,7 @@ function drawClickMarkers() {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
             try {
-                const supportsFS = 'showDirectoryPicker' in window;
-                if (!supportsFS) { alert('Use a Chromium-based browser to attach images.'); return; }
-                alert('Select the project folder (contains index.html). The image will be copied to assets/maps/images/.');
-                const dirHandle = await window.showDirectoryPicker();
+                const dirHandle = await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html). The image will be copied to assets/maps/images/.');
                 const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
                 if (!hasIndex) {
                     const proceed = confirm('Selected folder does not contain index.html. Continue anyway?');
@@ -142,7 +139,6 @@ function drawClickMarkers() {
                 const writable = await fileHandle.createWritable();
                 await writable.write(file);
                 await writable.close();
-                // Assign relative path to last draft pin
                 const last = draftBasePins[draftBasePins.length - 1];
                 last.image = `assets/maps/images/${targetName}`;
                 renderCanvas();
@@ -152,6 +148,29 @@ function drawClickMarkers() {
                 alert('Attach failed: ' + err.message);
             } finally {
                 fileInput.value = '';
+            }
+        });
+    });
+})();
+
+// Cached project folder handle (not persisted across browser restarts)
+let projectFolderHandle = null;
+
+(function wireProjectFolderSetter(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('setProjectFolderBtn');
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+            try {
+                if (!('showDirectoryPicker' in window)) { alert('Use a Chromium-based browser to set the project folder.'); return; }
+                alert('Select the project folder (contains index.html).');
+                projectFolderHandle = await window.showDirectoryPicker();
+                const hasIndex = await projectFolderHandle.getFileHandle('index.html').then(() => true).catch(() => false);
+                if (!hasIndex) alert('Selected folder does not contain index.html. You can still export, but please double-check.');
+                else alert('Project folder set. Exports and images will save without reprompting.');
+            } catch (err) {
+                console.error(err);
+                alert('Failed to set project folder: ' + err.message);
             }
         });
     });
@@ -1094,9 +1113,17 @@ function loadBaseDataForSelectedMap() {
     });
 }
 
+async function getProjectFolderHandleOrPrompt(message) {
+    if (projectFolderHandle) return projectFolderHandle;
+    if (!('showDirectoryPicker' in window)) throw new Error('Browser does not support folder selection.');
+    if (message) alert(message);
+    const dir = await window.showDirectoryPicker();
+    projectFolderHandle = dir;
+    return dir;
+}
+
 async function exportBasePinsJSON() {
     try {
-        // Merge draft pins into base pins grouped by category
         const merged = (basePins || []).concat(draftBasePins || []);
         const usedCats = new Set((baseCategories && baseCategories.length ? baseCategories : ['Keys','Spawns','Extracts']));
         merged.forEach(p => usedCats.add(p.category || p.type || 'Misc'));
@@ -1107,20 +1134,12 @@ async function exportBasePinsJSON() {
             buildings: (baseBuildings || []).concat(draftBuildings || []),
             basePins: merged
         };
-        // Request folder: ask for the project root (containing index.html)
-        const supportsFS = 'showDirectoryPicker' in window;
-        if (!supportsFS) {
-            alert('Your browser does not support exporting. Please use a Chromium-based browser.');
-            return;
-        }
-        alert('Select the project folder (the one that contains index.html). The tool will write into assets/maps/data/.');
-        const dirHandle = await window.showDirectoryPicker();
+        const dirHandle = await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html). The tool will write into assets/maps/data/.');
         const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
         if (!hasIndex) {
             const proceed = confirm('Selected folder does not contain index.html. Continue anyway?');
             if (!proceed) return;
         }
-        // Create nested directories assets/maps/data
         const assetsDir = await dirHandle.getDirectoryHandle('assets', { create: true });
         const mapsDir = await assetsDir.getDirectoryHandle('maps', { create: true });
         const dataDir = await mapsDir.getDirectoryHandle('data', { create: true });
@@ -1130,7 +1149,6 @@ async function exportBasePinsJSON() {
         await writable.write(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
         await writable.close();
         alert('Exported base pins to assets/maps/data/' + fileName + '\nCommit and push to ship these to everyone.');
-        // Replace in-memory basePins with merged and clear draft
         basePins = merged;
         baseBuildings = payload.buildings;
         draftBasePins = [];
