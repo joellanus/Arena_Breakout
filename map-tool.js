@@ -24,6 +24,8 @@ let selectedMap = 'Farm';
 let basePins = [];
 let baseCategories = [];
 let visibleBaseCategories = new Set();
+let baseBuildings = [];
+let showBuildings = true;
 
 // Authoring state
 let authorMode = false;
@@ -582,6 +584,8 @@ function renderCanvas() {
 
     // Draw base pins (shipped)
     drawBasePins();
+    // Draw building labels (shipped)
+    drawBuildings();
     
     // Draw all drawing strokes
     drawingHistory.forEach(drawing => {
@@ -675,6 +679,29 @@ function drawBasePins() {
             ctx.fillText(pin.label, pin.x + 14, pin.y + 4);
         }
     });
+}
+
+// Draw building name labels
+function drawBuildings() {
+    if (!showBuildings) return;
+    if (!baseBuildings || baseBuildings.length === 0) return;
+    ctx.save();
+    ctx.font = 'bold 18px Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    baseBuildings.forEach(b => {
+        const name = b.name || b.label || '';
+        if (!name) return;
+        // Halo for readability
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        for (let dx=-2; dx<=2; dx++) for (let dy=-2; dy<=2; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            ctx.fillText(name, b.x+dx, b.y+dy);
+        }
+        ctx.fillStyle = '#66b3ff';
+        ctx.fillText(name, b.x, b.y);
+    });
+    ctx.restore();
 }
 
 function drawDraftBasePinsOnTop() {
@@ -898,6 +925,7 @@ function loadBaseDataForSelectedMap() {
     const url = `assets/maps/data/${slug}.json`;
     basePins = [];
     baseCategories = [];
+    baseBuildings = [];
     const togglesRoot = document.getElementById('baseLayerToggles');
     const section = document.getElementById('baseLayersSection');
     if (togglesRoot) togglesRoot.innerHTML = '';
@@ -906,6 +934,7 @@ function loadBaseDataForSelectedMap() {
         if (!data) return;
         basePins = Array.isArray(data.basePins) ? data.basePins : [];
         baseCategories = Array.isArray(data.categories) ? data.categories : [];
+        baseBuildings = Array.isArray(data.buildings) ? data.buildings : [];
         // Initialize visibility from localStorage or default to all
         const visKey = 'mapTool:visibleCats:' + selectedMap;
         const saved = localStorage.getItem(visKey);
@@ -918,8 +947,15 @@ function loadBaseDataForSelectedMap() {
         } else {
             visibleBaseCategories = new Set(baseCategories);
         }
-        if (section && togglesRoot && baseCategories.length > 0) {
+        if (section && togglesRoot) {
             section.style.display = 'block';
+            // Buildings toggle
+            const bwrap = document.createElement('div');
+            bwrap.style.display = 'flex'; bwrap.style.alignItems = 'center'; bwrap.style.gap = '0.5rem'; bwrap.style.marginBottom = '0.5rem'; bwrap.style.padding = '0.5rem'; bwrap.style.borderRadius = '6px'; bwrap.style.backgroundColor = 'rgba(100, 180, 255, 0.08)'; bwrap.style.border = '1px solid rgba(100, 180, 255, 0.3)';
+            const binput = document.createElement('input'); binput.type = 'checkbox'; binput.id = 'bl-buildings'; binput.checked = showBuildings; binput.style.transform = 'scale(1.2)'; binput.style.accentColor = '#66b3ff';
+            const blabel = document.createElement('label'); blabel.htmlFor = 'bl-buildings'; blabel.textContent = '🏢 Building Names'; blabel.style.color = '#b8d9ff'; blabel.style.fontWeight = '600'; blabel.style.cursor = 'pointer';
+            binput.addEventListener('change', () => { showBuildings = !!binput.checked; renderCanvas(); });
+            bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);
             baseCategories.forEach(cat => {
                 const id = 'bl-' + cat.replace(/[^a-z0-9]/ig, '').toLowerCase();
                 const wrapper = document.createElement('div');
@@ -976,6 +1012,7 @@ async function exportBasePinsJSON() {
             map: selectedMap,
             image: `assets/maps/${getMapSlug(selectedMap)}.png`,
             categories: Array.from(usedCats),
+            buildings: baseBuildings || [],
             basePins: merged
         };
         // Request folder: ask for the project root (containing index.html)

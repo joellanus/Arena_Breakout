@@ -6,6 +6,11 @@
     "Spawns",
     "Extracts"
   ],
+  "buildings": [
+    { "x": 950, "y": 520, "name": "Main Office" },
+    { "x": 820, "y": 620, "name": "Barn" },
+    { "x": 1200, "y": 780, "name": "Storage" }
+  ],
   "basePins": [
     {
       "x": 1095.400651465798,
