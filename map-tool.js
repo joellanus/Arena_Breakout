@@ -162,6 +162,23 @@ document.addEventListener('DOMContentLoaded', function() {
     canvas.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('mouseleave', handleMouseUp);
 
+    // Ensure Base Layers section and Building Names toggle are visible immediately
+    (function ensureBaseLayersUI(){
+        const togglesRoot = document.getElementById('baseLayerToggles');
+        const section = document.getElementById('baseLayersSection');
+        if (!togglesRoot || !section) return;
+        section.style.display = 'block';
+        // Add buildings toggle if not already present
+        if (!document.getElementById('bl-buildings')) {
+            const bwrap = document.createElement('div');
+            bwrap.style.display = 'flex'; bwrap.style.alignItems = 'center'; bwrap.style.gap = '0.5rem'; bwrap.style.marginBottom = '0.5rem'; bwrap.style.padding = '0.5rem'; bwrap.style.borderRadius = '6px'; bwrap.style.backgroundColor = 'rgba(100, 180, 255, 0.08)'; bwrap.style.border = '1px solid rgba(100, 180, 255, 0.3)';
+            const binput = document.createElement('input'); binput.type = 'checkbox'; binput.id = 'bl-buildings'; binput.checked = showBuildings; binput.style.transform = 'scale(1.2)'; binput.style.accentColor = '#66b3ff';
+            const blabel = document.createElement('label'); blabel.htmlFor = 'bl-buildings'; blabel.textContent = '🏢 Building Names'; blabel.style.color = '#b8d9ff'; blabel.style.fontWeight = '600'; blabel.style.cursor = 'pointer';
+            binput.addEventListener('change', () => { showBuildings = !!binput.checked; renderCanvas(); });
+            bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);
+        }
+    })();
+
     // Keyboard for pan (Space)
     document.addEventListener('keydown', function(e) {
         if (e.code === 'Space') {
