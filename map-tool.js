@@ -30,7 +30,7 @@ let draftBuildings = [];
 let authorAddingBuilding = false;
 
 // Authoring state
-let authorMode = false;
+let authorMode = true; // editing enabled for all users
 let draftBasePins = [];
 
 // Dev mode flag (no longer gating authoring UI)
@@ -67,20 +67,13 @@ function drawClickMarkers() {
 // Hook up Author Mode UI after DOM ready additions
 (function wireAuthorUI(){
     document.addEventListener('DOMContentLoaded', () => {
-        const toggle = document.getElementById('authorToggle');
         const catSel = document.getElementById('authorCategory');
         const exportBtn = document.getElementById('exportBasePinsBtn');
         const clearDraftBtn = document.getElementById('clearDraftPinsBtn');
         const addBuildingBtn = document.getElementById('addBuildingLabelBtn');
         const clearDraftBuildingsBtn = document.getElementById('clearDraftBuildingsBtn');
-        if (toggle) {
-            toggle.addEventListener('change', () => {
-                authorMode = !!toggle.checked;
-                if (authorMode) {
-                    try { setTool('pin'); } catch(_) {}
-                }
-            });
-        }
+        // Always enabled; default tool to pin for convenience
+        try { setTool('pin'); } catch(_) {}
         if (exportBtn) {
             exportBtn.addEventListener('click', exportBasePinsJSON);
         }
@@ -96,7 +89,6 @@ function drawClickMarkers() {
         }
         if (addBuildingBtn) {
             addBuildingBtn.addEventListener('click', () => {
-                if (!authorMode) { alert('Enable Author Mode first.'); return; }
                 authorAddingBuilding = true;
                 setTool('cursor');
                 alert('Click on the map to place a building label.');
