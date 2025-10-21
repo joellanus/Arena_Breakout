@@ -301,27 +301,15 @@
                         <div id="baseLayerToggles"></div>
                     </div>
 
-                    <!-- Drawing Tools -->
-                    <div class="tool-section">
+                    <!-- Drawing Tools (hidden; use right-click menu) -->
+                    <div class="tool-section" style="display:none;">
                         <h3>✏️ Tools</h3>
-                        <button class="tool-button" id="toolCursor" onclick="setTool('cursor')">
-                            🖱️ Cursor
-                        </button>
-                        <button class="tool-button" id="toolPin" onclick="setTool('pin')">
-                            📍 Add Pin
-                        </button>
-                        <button class="tool-button" id="toolDraw" onclick="setTool('draw')">
-                            ✏️ Draw
-                        </button>
-                        <button class="tool-button" id="toolErase" onclick="setTool('erase')">
-                            🧹 Erase
-                        </button>
-                        <button class="tool-button" onclick="clearDrawing()">
-                            🔄 Clear Drawings
-                        </button>
-                        <button class="tool-button" onclick="clearAllPins()">
-                            🗑️ Clear All Pins
-                        </button>
+                        <button class="tool-button" id="toolCursor" onclick="setTool('cursor')">🖱️ Cursor</button>
+                        <button class="tool-button" id="toolPin" onclick="setTool('pin')">📍 Add Pin</button>
+                        <button class="tool-button" id="toolDraw" onclick="setTool('draw')">✏️ Draw</button>
+                        <button class="tool-button" id="toolErase" onclick="setTool('erase')">🧹 Erase</button>
+                        <button class="tool-button" onclick="clearDrawing()">🔄 Clear Drawings</button>
+                        <button class="tool-button" onclick="clearAllPins()">🗑️ Clear All Pins</button>
                     </div>
 
                     <!-- Pin Types -->
@@ -383,8 +371,8 @@
                         </button>
                     </div>
 
-                    <!-- Author Mode -->
-                    <div class="tool-section" id="authorSection" style="display:block; background: linear-gradient(135deg, #2a1a1a 0%, #1a0a0a 100%); border: 2px solid #4a2a2a;">
+                    <!-- Author Mode (hidden; always-on editing via context menu) -->
+                    <div class="tool-section" id="authorSection" style="display:none;">
                         <h3 style="color: #ffaa44; text-shadow: 0 0 8px rgba(255, 170, 68, 0.3);">🛠️ Author Mode</h3>
                         <label style="color:#ffcc88; font-size:0.85rem; display:block; margin-bottom:0.5rem; font-weight: 600;">
                             Category:
@@ -437,10 +425,19 @@
                     <div id="pinTooltip" class="pin-tooltip" style="display:none;">Tooltip</div>
                     
                     <!-- Context menu for pins (right-click) -->
-                    <div id="pinContextMenu" style="display:none; position:absolute; z-index:30; background:#111; border:1px solid #333; border-radius:8px; padding:8px; box-shadow:0 10px 24px rgba(0,0,0,0.5); min-width:160px;">
-                        <div style="font-weight:700; color:#fff; margin-bottom:6px;">Pin Options</div>
-                        <button id="ctxShowDetails" class="tab-btn" style="width:100%; margin-bottom:6px;">🔍 Show Details</button>
-                        <button id="ctxDeletePin" class="tab-btn" style="width:100%; background:#1a1a1a; border-color:#333;">🗑️ Delete Pin</button>
+                    <div id="pinContextMenu" style="display:none; position:absolute; z-index:30; background:#111; border:1px solid #333; border-radius:8px; padding:8px; box-shadow:0 10px 24px rgba(0,0,0,0.5); min-width:200px;">
+                        <div style="font-weight:700; color:#fff; margin-bottom:6px;">Map Actions</div>
+                        <button data-act="add-keys" class="tab-btn" style="width:100%;">🔑 Add Keys Pin</button>
+                        <button data-act="add-spawns" class="tab-btn" style="width:100%;">📍 Add Spawn Pin</button>
+                        <button data-act="add-extracts" class="tab-btn" style="width:100%;">🚪 Add Extract Pin</button>
+                        <button data-act="add-loot" class="tab-btn" style="width:100%;">💎 Add Loot Pin</button>
+                        <button data-act="add-vantage" class="tab-btn" style="width:100%;">👁️ Add Vantage Pin</button>
+                        <button data-act="add-danger" class="tab-btn" style="width:100%;">⚠️ Add Danger Pin</button>
+                        <button data-act="add-building" class="tab-btn" style="width:100%;">🏢 Add Building Label</button>
+                        <div style="height:1px; background:#333; margin:8px 0;"></div>
+                        <button data-act="move" class="tab-btn" style="width:100%;">↔️ Move Selected</button>
+                        <button data-act="show" class="tab-btn" style="width:100%;">🔍 Show Details</button>
+                        <button data-act="delete" class="tab-btn" style="width:100%; background:#1a1a1a; border-color:#333;">🗑️ Delete</button>
                     </div>
                 </div>
             </div>

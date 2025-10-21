@@ -1428,3 +1428,105 @@ function logCanvasInfo(prefix, x, y) {
     });
 })();
 
+// Context menu logic and auto-save
+(function wireContextMenu(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.querySelector('.map-canvas-container');
+        const menu = document.getElementById('pinContextMenu');
+        const tooltip = document.getElementById('pinTooltip');
+        if (!container || !menu) return;
+        let ctxTarget = null; // { type:'draft'|'base'|'user', x,y,index? }
+        const positionMenu = (e) => {
+            const rect = container.getBoundingClientRect();
+            menu.style.left = (e.clientX - rect.left) + 'px';
+            menu.style.top = (e.clientY - rect.top) + 'px';
+        };
+        const hitTest = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+            // Try draft base pins first, then base pins, then user pins
+            const all = [];
+            (draftBasePins||[]).forEach((p,i)=>all.push({src:'draft',i,x:p.x,y:p.y,p}));
+            (basePins||[]).forEach((p,i)=>all.push({src:'base',i,x:p.x,y:p.y,p}));
+            (pins||[]).forEach((p,i)=>all.push({src:'user',i,x:p.x,y:p.y,p}));
+            let best = null, bestD2 = Infinity;
+            all.forEach(it=>{ const dx=it.x-mx,dy=it.y-my; const d2=dx*dx+dy*dy; if(d2<bestD2){bestD2=d2; best=it;} });
+            if (best && bestD2 <= 40*40) return best;
+            return { src:'empty', x:mx, y:my };
+        };
+        container.addEventListener('contextmenu', (e) => {
+            if (!canvas) return;
+            e.preventDefault();
+            tooltip && (tooltip.style.display='none');
+            ctxTarget = hitTest(e);
+            positionMenu(e);
+            menu.style.display = '';
+        });
+        document.addEventListener('click', (e) => {
+            if (menu.contains(e.target)) return;
+            menu.style.display = 'none';
+        });
+        const ensureProject = async () => {
+            try { await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html).'); } catch(_) {}
+        };
+        const addPinAt = async (category, x, y) => {
+            const title = prompt('Title:', '') || '';
+            const notes = prompt('Notes/details:', '') || '';
+            draftBasePins.push({ x, y, category, label:title, notes, image:'' });
+            updateDraftCounter();
+            renderCanvas();
+            await ensureProject();
+            await exportBasePinsJSON(); // auto-save
+        };
+        const doDelete = async (target) => {
+            if (!target) return;
+            if (target.src === 'draft') { draftBasePins.splice(target.i,1); }
+            else if (target.src === 'base') { basePins.splice(target.i,1); }
+            else if (target.src === 'user') { pins.splice(target.i,1); }
+            renderCanvas();
+            await ensureProject();
+            await exportBasePinsJSON();
+        };
+        const doMove = async (target) => {
+            if (!target || target.src==='empty') return;
+            alert('Click the new location for this item.');
+            let moving = true;
+            const onClick = async (ev) => {
+                if (!moving) return; moving=false;
+                const rect = canvas.getBoundingClientRect();
+                const nx = (ev.clientX - rect.left) * (canvas.width / rect.width);
+                const ny = (ev.clientY - rect.top) * (canvas.height / rect.height);
+                if (target.src === 'draft') { draftBasePins[target.i].x = nx; draftBasePins[target.i].y = ny; }
+                else if (target.src === 'base') { basePins[target.i].x = nx; basePins[target.i].y = ny; }
+                else if (target.src === 'user') { pins[target.i].x = nx; pins[target.i].y = ny; }
+                renderCanvas();
+                await ensureProject();
+                await exportBasePinsJSON();
+                container.removeEventListener('click', onClick, true);
+            };
+            container.addEventListener('click', onClick, true);
+        };
+        menu.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-act]');
+            if (!btn) return;
+            const act = btn.getAttribute('data-act');
+            const t = ctxTarget; ctxTarget = null; menu.style.display='none';
+            if (act.startsWith('add-')) {
+                const catMap = { 'add-keys':'Keys','add-spawns':'Spawns','add-extracts':'Extracts','add-loot':'Loot','add-vantage':'Vantage','add-danger':'Danger' };
+                const cat = catMap[act];
+                await addPinAt(cat, t.x, t.y);
+                return;
+            }
+            if (act === 'add-building') {
+                const name = prompt('Building name:','');
+                if (name && name.trim()) { draftBuildings.push({ x:t.x, y:t.y, name:name.trim() }); renderCanvas(); await ensureProject(); await exportBasePinsJSON(); }
+                return;
+            }
+            if (act === 'delete') { await doDelete(t); return; }
+            if (act === 'move') { await doMove(t); return; }
+            if (act === 'show') { /* tooltip will show on hover */ return; }
+        });
+    });
+})();
+
