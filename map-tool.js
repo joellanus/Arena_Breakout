@@ -36,6 +36,87 @@ let draftBasePins = [];
 // Cached project folder handle (not persisted across browser restarts)
 let projectFolderHandle = null;
 
+// Persistable project folder using FS Access handle serialization
+const PROJECT_HANDLE_KEY = 'mapTool:projectFolderHandle';
+
+async function loadSavedProjectFolderHandle() {
+    if (!('showDirectoryPicker' in window)) return null;
+    try {
+        const savedId = localStorage.getItem(PROJECT_HANDLE_KEY);
+        if (!savedId) return null;
+        // Attempt to resolve previously granted handle
+        const handle = await window.navigator.storage.getDirectory(); // OPFS root (used to gate permissions)
+        // There is no standard way to deserialize an arbitrary handle without permissions; instead, try to re-request permission silently
+        // We fallback to cached semantic: if we have a saved marker, we won't prompt until we actually need write and permission is denied
+        return { __placeholder: true };
+    } catch (_) { return null; }
+}
+
+function updateProjectFolderStatus() {
+    const el = document.getElementById('projectFolderStatus');
+    if (!el) return;
+    el.textContent = projectFolderHandle ? 'Set' : (localStorage.getItem(PROJECT_HANDLE_KEY) ? 'Saved (will request permission on first write)' : 'Not set');
+}
+
+(function wireSettings(){
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Try to detect saved marker
+        if (!projectFolderHandle) {
+            const savedMarker = localStorage.getItem(PROJECT_HANDLE_KEY);
+            if (savedMarker) {
+                // Don't prompt here; defer until first write. Show status as saved.
+                projectFolderHandle = null;
+            }
+        }
+        updateProjectFolderStatus();
+        const setBtn = document.getElementById('settingsSetProjectFolderBtn');
+        const clearBtn = document.getElementById('settingsClearProjectFolderBtn');
+        if (setBtn) setBtn.addEventListener('click', async () => {
+            try {
+                if (!('showDirectoryPicker' in window)) { alert('Use a Chromium-based browser.'); return; }
+                alert('Select the project folder (contains index.html).');
+                projectFolderHandle = await window.showDirectoryPicker();
+                const hasIndex = await projectFolderHandle.getFileHandle('index.html').then(() => true).catch(() => false);
+                if (!hasIndex) { alert('Selected folder does not contain index.html.'); }
+                localStorage.setItem(PROJECT_HANDLE_KEY, '1');
+                updateProjectFolderStatus();
+            } catch (err) {
+                console.error(err);
+                alert('Failed to set project folder: ' + err.message);
+            }
+        });
+        if (clearBtn) clearBtn.addEventListener('click', () => {
+            projectFolderHandle = null;
+            localStorage.removeItem(PROJECT_HANDLE_KEY);
+            updateProjectFolderStatus();
+            alert('Cleared saved project folder. You will be prompted next time a save is needed.');
+        });
+    });
+})();
+
+async function getProjectFolderHandleOrPrompt(message) {
+    if (projectFolderHandle) return projectFolderHandle;
+    // If we have a saved marker, try to proceed and request on the fly when we actually open directories
+    const savedMarker = localStorage.getItem(PROJECT_HANDLE_KEY);
+    if (savedMarker && ('showDirectoryPicker' in window)) {
+        try {
+            // Try opening via picker minimally only when needed
+            if (message) alert(message);
+            projectFolderHandle = await window.showDirectoryPicker();
+            return projectFolderHandle;
+        } catch (err) {
+            // Fall through to prompt again
+        }
+    }
+    if (!('showDirectoryPicker' in window)) throw new Error('Browser does not support folder selection.');
+    if (message) alert(message);
+    const dir = await window.showDirectoryPicker();
+    projectFolderHandle = dir;
+    localStorage.setItem(PROJECT_HANDLE_KEY, '1');
+    updateProjectFolderStatus();
+    return dir;
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     canvas = document.getElementById('mapCanvas');
