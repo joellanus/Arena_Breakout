@@ -53,6 +53,13 @@ Once the helper is open:
 - **Alt + 2**: Maps (opens Map Tool)
 - **F11**: Toggle fullscreen
 
+### Editing Maps Quickly
+
+- Open Map Tool → Settings → "Set Project Folder" (once)
+- Right-click the map to add pins/labels; hover or left-click to view details
+- Four layer chips toggle visibility: Keys, Spawns, Extracts, Buildings
+- Changes auto-save to the project folder
+
 ## Next Steps
 
 1. ✅ **Try the Interactive Map Tool** - Click the orange button! Draw routes, add pins, plan strategies

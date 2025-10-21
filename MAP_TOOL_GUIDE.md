@@ -9,15 +9,14 @@ Your personal tactical map planner for Arena Breakout!
 - Author Mode (dev only): place curated pins and export JSON directly into the repo
 - Hover tooltip: enlarged label when pointing near a pin
 
-## Dev Mode & Authoring
+## New Workflow
 
-- Toggle Dev Mode: Ctrl+Shift+D
-- Author Mode: enable the checkbox in the sidebar (visible only in dev mode)
-- Choose a category → select the Pin tool → click to place a draft base pin → enter an optional label
-- The HUD shows “Draft pins: N” as you place them
-- Export JSON: click “💾 Export Base Pins (JSON)”, then select the project folder (the one containing `index.html`)
-  - Writes `assets/maps/data/<slug>.json`
-  - Commit and push to ship to everyone
+- Editing is always enabled; no dev mode
+- Right-click the map (empty space) to add a pin or building label
+- Right-click a pin to Edit, Move, Delete, or adjust text sizes
+- Hover or left-click a pin to view title, notes, and image
+- Toggle layers via chips: 🔑 Keys, 📍 Spawns, 🚪 Extracts, 🏢 Buildings
+- Settings → Set Project Folder once to avoid repeated prompts; stored in your browser
 
 ## Base Layers
 

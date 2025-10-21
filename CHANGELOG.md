@@ -23,3 +23,10 @@
 
 ## 1.0.0
 - Initial helper + map tool
+
+## 1.2.x (Map UX Cleanup)
+- Always-on editing; removed dev mode and author toggle
+- Right-click context menu for add/edit/move/delete; size adjustments
+- Hover/left-click pin details with larger text
+- Simplified layer controls to four toggle chips
+- Persist project folder selection in IndexedDB; no repeated prompts

@@ -85,6 +85,13 @@ Notes:
 - `.gitignore` keeps `dist/` ignored except for `dist/latest.zip` which is committed for CDN delivery
 - Update URLs live in `config.js` under `CONFIG.update`
 
+## Map Editing (Always On)
+
+- Left-click: inspect pins (hover also shows details)
+- Right-click: context menu to Add/Edit/Move/Delete pins and building labels; adjust note/label size
+- Layers: use the four chips to toggle Keys, Spawns, Extracts, and Buildings
+- Auto-save: changes persist to `assets/maps/data/<map>.json` immediately (select the Project Folder once under Settings)
+
 ## Map Tool Quick Tips
 
 - Tools: 1=Pin, 2=Draw, 3=Erase; Ctrl+S=Save, Ctrl+Z=Undo; ⟲ resets zoom
