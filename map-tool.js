@@ -1037,9 +1037,7 @@ function loadBaseDataForSelectedMap() {
         blabel.style.fontWeight = '600';
         blabel.style.cursor = 'pointer';
         binput.addEventListener('change', () => { showBuildings = !!binput.checked; renderCanvas(); });
-        bwrap.appendChild(binput);
-        bwrap.appendChild(blabel);
-        togglesRoot.appendChild(bwrap);
+        bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);
     }
     fetch(url, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(data => {
         if (!data) return;
@@ -1134,6 +1132,8 @@ async function exportBasePinsJSON() {
             buildings: (baseBuildings || []).concat(draftBuildings || []),
             basePins: merged
         };
+        // Cache shipped data locally for reliable reloads
+        try { localStorage.setItem(getShippedDataKey(), JSON.stringify(payload)); } catch(_) {}
         const dirHandle = await getProjectFolderHandleOrPrompt('Select the project folder (contains index.html). The tool will write into assets/maps/data/.');
         const hasIndex = await dirHandle.getFileHandle('index.html').then(() => true).catch(() => false);
         if (!hasIndex) {
