@@ -36,38 +36,64 @@ let draftBasePins = [];
 // Cached project folder handle (not persisted across browser restarts)
 let projectFolderHandle = null;
 
-// Persistable project folder using FS Access handle serialization
-const PROJECT_HANDLE_KEY = 'mapTool:projectFolderHandle';
+// IndexedDB helpers for persisting directory handle
+async function idbOpen() {
+    return await new Promise((resolve, reject) => {
+        const req = indexedDB.open('mapToolDB', 1);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function idbSet(store, key, value) {
+    const db = await idbOpen();
+    return await new Promise((resolve, reject) => {
+        const tx = db.transaction(store, 'readwrite');
+        tx.objectStore(store).put(value, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+async function idbGet(store, key) {
+    const db = await idbOpen();
+    return await new Promise((resolve, reject) => {
+        const tx = db.transaction(store, 'readonly');
+        const req = tx.objectStore(store).get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+    });
+}
 
-async function loadSavedProjectFolderHandle() {
-    if (!('showDirectoryPicker' in window)) return null;
+const PROJECT_HANDLE_KEY = 'projectFolderHandle';
+
+async function tryRestoreProjectFolderHandle() {
+    if (!('showDirectoryPicker' in window) || !('indexedDB' in window)) return null;
     try {
-        const savedId = localStorage.getItem(PROJECT_HANDLE_KEY);
-        if (!savedId) return null;
-        // Attempt to resolve previously granted handle
-        const handle = await window.navigator.storage.getDirectory(); // OPFS root (used to gate permissions)
-        // There is no standard way to deserialize an arbitrary handle without permissions; instead, try to re-request permission silently
-        // We fallback to cached semantic: if we have a saved marker, we won't prompt until we actually need write and permission is denied
-        return { __placeholder: true };
+        const handle = await idbGet('settings', PROJECT_HANDLE_KEY);
+        if (!handle) return null;
+        if (typeof handle.requestPermission === 'function') {
+            const perm = await handle.queryPermission({ mode: 'readwrite' });
+            if (perm === 'granted') { projectFolderHandle = handle; return handle; }
+            const req = await handle.requestPermission({ mode: 'readwrite' });
+            if (req === 'granted') { projectFolderHandle = handle; return handle; }
+        }
+        return null;
     } catch (_) { return null; }
 }
 
 function updateProjectFolderStatus() {
     const el = document.getElementById('projectFolderStatus');
     if (!el) return;
-    el.textContent = projectFolderHandle ? 'Set' : (localStorage.getItem(PROJECT_HANDLE_KEY) ? 'Saved (will request permission on first write)' : 'Not set');
+    const isSet = !!projectFolderHandle;
+    el.textContent = isSet ? 'Set' : 'Not set';
 }
 
 (function wireSettings(){
     document.addEventListener('DOMContentLoaded', async () => {
-        // Try to detect saved marker
-        if (!projectFolderHandle) {
-            const savedMarker = localStorage.getItem(PROJECT_HANDLE_KEY);
-            if (savedMarker) {
-                // Don't prompt here; defer until first write. Show status as saved.
-                projectFolderHandle = null;
-            }
-        }
+        await tryRestoreProjectFolderHandle();
         updateProjectFolderStatus();
         const setBtn = document.getElementById('settingsSetProjectFolderBtn');
         const clearBtn = document.getElementById('settingsClearProjectFolderBtn');
@@ -77,17 +103,17 @@ function updateProjectFolderStatus() {
                 alert('Select the project folder (contains index.html).');
                 projectFolderHandle = await window.showDirectoryPicker();
                 const hasIndex = await projectFolderHandle.getFileHandle('index.html').then(() => true).catch(() => false);
-                if (!hasIndex) { alert('Selected folder does not contain index.html.'); }
-                localStorage.setItem(PROJECT_HANDLE_KEY, '1');
+                if (!hasIndex) alert('Selected folder does not contain index.html.');
+                if ('indexedDB' in window) await idbSet('settings', PROJECT_HANDLE_KEY, projectFolderHandle);
                 updateProjectFolderStatus();
             } catch (err) {
                 console.error(err);
                 alert('Failed to set project folder: ' + err.message);
             }
         });
-        if (clearBtn) clearBtn.addEventListener('click', () => {
+        if (clearBtn) clearBtn.addEventListener('click', async () => {
             projectFolderHandle = null;
-            localStorage.removeItem(PROJECT_HANDLE_KEY);
+            if ('indexedDB' in window) await idbSet('settings', PROJECT_HANDLE_KEY, null);
             updateProjectFolderStatus();
             alert('Cleared saved project folder. You will be prompted next time a save is needed.');
         });
@@ -96,23 +122,13 @@ function updateProjectFolderStatus() {
 
 async function getProjectFolderHandleOrPrompt(message) {
     if (projectFolderHandle) return projectFolderHandle;
-    // If we have a saved marker, try to proceed and request on the fly when we actually open directories
-    const savedMarker = localStorage.getItem(PROJECT_HANDLE_KEY);
-    if (savedMarker && ('showDirectoryPicker' in window)) {
-        try {
-            // Try opening via picker minimally only when needed
-            if (message) alert(message);
-            projectFolderHandle = await window.showDirectoryPicker();
-            return projectFolderHandle;
-        } catch (err) {
-            // Fall through to prompt again
-        }
-    }
+    await tryRestoreProjectFolderHandle();
+    if (projectFolderHandle) return projectFolderHandle;
     if (!('showDirectoryPicker' in window)) throw new Error('Browser does not support folder selection.');
     if (message) alert(message);
     const dir = await window.showDirectoryPicker();
     projectFolderHandle = dir;
-    localStorage.setItem(PROJECT_HANDLE_KEY, '1');
+    if ('indexedDB' in window) await idbSet('settings', PROJECT_HANDLE_KEY, projectFolderHandle);
     updateProjectFolderStatus();
     return dir;
 }
@@ -419,7 +435,6 @@ function loadBaseDataForSelectedMap() {
     basePins = []; baseCategories = []; baseBuildings = [];
     const togglesRoot = document.getElementById('baseLayerToggles'); const section = document.getElementById('baseLayersSection');
     if (togglesRoot) togglesRoot.innerHTML = ''; if (section) section.style.display = 'block';
-    if (togglesRoot) { const bwrap=document.createElement('div'); bwrap.style.display='flex'; bwrap.style.alignItems='center'; bwrap.style.gap='0.5rem'; bwrap.style.marginBottom='0.5rem'; bwrap.style.padding='0.5rem'; bwrap.style.borderRadius='6px'; bwrap.style.backgroundColor='rgba(100, 180, 255, 0.08)'; bwrap.style.border='1px solid rgba(100, 180, 255, 0.3)'; const binput=document.createElement('input'); binput.type='checkbox'; binput.id='bl-buildings'; binput.checked=showBuildings; binput.style.transform='scale(1.2)'; binput.style.accentColor='#66b3ff'; const blabel=document.createElement('label'); blabel.htmlFor='bl-buildings'; blabel.textContent='🏢 Building Names'; blabel.style.color='#b8d9ff'; blabel.style.fontWeight='600'; blabel.style.cursor='pointer'; binput.addEventListener('change',()=>{ showBuildings=!!binput.checked; renderCanvas();}); bwrap.appendChild(binput); bwrap.appendChild(blabel); togglesRoot.appendChild(bwrap);} 
     const applyData = (data) => {
         if (!data) return false;
         basePins = Array.isArray(data.basePins) ? data.basePins : [];
@@ -429,7 +444,7 @@ function loadBaseDataForSelectedMap() {
         const saved = localStorage.getItem(visKey);
         if (saved) { try { visibleBaseCategories = new Set(JSON.parse(saved)); } catch (_) { visibleBaseCategories = new Set(baseCategories); } }
         else visibleBaseCategories = new Set(baseCategories);
-        if (section && togglesRoot) { section.style.display='block'; baseCategories.forEach(cat=>{ const id='bl-'+cat.replace(/[^a-z0-9]/ig,'').toLowerCase(); const wrapper=document.createElement('div'); wrapper.style.display='flex'; wrapper.style.alignItems='center'; wrapper.style.gap='0.5rem'; wrapper.style.marginBottom='0.5rem'; wrapper.style.padding='0.5rem'; wrapper.style.borderRadius='6px'; wrapper.style.backgroundColor='rgba(68, 255, 68, 0.1)'; wrapper.style.border='1px solid rgba(68, 255, 68, 0.3)'; const input=document.createElement('input'); input.type='checkbox'; input.id=id; input.checked=visibleBaseCategories.has(cat); input.style.transform='scale(1.2)'; input.style.accentColor='#44ff44'; const label=document.createElement('label'); label.htmlFor=id; const categoryEmojis={ 'Keys':'🔑','Spawns':'📍','Extracts':'🚪' }; label.textContent=`${categoryEmojis[cat]||'📍'} ${cat}`; label.style.color='#88cc88'; label.style.fontWeight='600'; label.style.cursor='pointer'; input.addEventListener('change',()=>{ if(input.checked) visibleBaseCategories.add(cat); else visibleBaseCategories.delete(cat); localStorage.setItem(visKey, JSON.stringify(Array.from(visibleBaseCategories))); renderCanvas(); }); wrapper.appendChild(input); wrapper.appendChild(label); togglesRoot.appendChild(wrapper); }); }
+        // No checkbox UI; toggles are controlled by chips at the top
         renderCanvas(); return true;
     };
     fetch(url, { cache: 'no-store' }).then(r=>r.ok?r.json():null).then(data=>{ if (data) { applyData(data); try{ localStorage.setItem(getShippedDataKey(), JSON.stringify(data)); }catch(_){} return; } try{ const cached=localStorage.getItem(getShippedDataKey()); if(cached){ const parsed=JSON.parse(cached); if(applyData(parsed)) return; } }catch(_){} console.warn('No base data found for', slug); }).catch(()=>{ try{ const cached=localStorage.getItem(getShippedDataKey()); if(cached){ const parsed=JSON.parse(cached); applyData(parsed); } }catch(_){} });
