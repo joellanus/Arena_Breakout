@@ -11,13 +11,33 @@
       "x": 1095.400651465798,
       "y": 724.1830842691661,
       "category": "Keys",
-      "label": "test"
+      "label": "Office Key",
+      "notes": "Located in the main office building. Check desk drawers and filing cabinets.",
+      "image": ""
     },
     {
-      "x": 1095.400651465798,
-      "y": 724.1830842691661,
-      "category": "Keys",
-      "label": "test"
+      "x": 1200,
+      "y": 800,
+      "category": "Keys", 
+      "label": "Storage Room Key",
+      "notes": "Found near the storage area. Often spawns on shelves or in boxes.",
+      "image": ""
+    },
+    {
+      "x": 800,
+      "y": 600,
+      "category": "Spawns",
+      "label": "Player Spawn A",
+      "notes": "Main spawn point for players. High traffic area.",
+      "image": ""
+    },
+    {
+      "x": 1000,
+      "y": 500,
+      "category": "Extracts",
+      "label": "Emergency Exit",
+      "notes": "Safe extraction point. Requires no key. Always available.",
+      "image": ""
     }
   ]
 }

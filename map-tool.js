@@ -1029,7 +1029,14 @@ function logCanvasInfo(prefix, x, y) {
             (basePins || []).forEach(p => {
                 const cat = p.category || p.type || 'Misc';
                 if (visibleBaseCategories.size > 0 && !visibleBaseCategories.has(cat)) return;
-                consider.push({ x:p.x, y:p.y, title:p.label || cat, notes:p.notes || '', image:p.image || '' });
+                consider.push({ 
+                    x:p.x, y:p.y, 
+                    title:p.label || cat, 
+                    notes:p.notes || p.description || '', 
+                    image:p.image || '',
+                    type: 'base',
+                    category: cat
+                });
             });
             // Include user pins (always allowed types)
             (pins || []).forEach(p => consider.push({ x:p.x, y:p.y, title:p.type || 'Pin', notes:p.note || '', image:'' }));
@@ -1037,7 +1044,10 @@ function logCanvasInfo(prefix, x, y) {
                 const dx = p.x - mx, dy = p.y - my; const d2 = dx*dx + dy*dy;
                 if (d2 < bestD2) { bestD2 = d2; best = p; }
             });
-            if (best && bestD2 <= (40*40)) return best; // threshold ~40px
+            if (best && bestD2 <= (60*60)) { // Increased threshold to 60px for easier detection
+                console.log('Found nearest pin:', best.title, 'at distance', Math.sqrt(bestD2), 'type:', best.type);
+                return best;
+            }
             return null;
         };
         container.addEventListener('mousemove', (e) => {
@@ -1048,10 +1058,28 @@ function logCanvasInfo(prefix, x, y) {
             const hit = pickNearestPin(mx, my);
             if (hit) {
                 tooltip.style.display = '';
-                tooltip.innerHTML = '' +
-                  '<div class="title">' + escapeHtml(hit.title) + '</div>' +
-                  (hit.notes ? ('<div class="notes">' + escapeHtml(hit.notes) + '</div>') : '') +
-                  (hit.image ? ('<img class="preview" src="' + hit.image + '" alt="preview"/>') : '');
+                
+                // Build tooltip content
+                let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
+                
+                // Add category info if available
+                if (hit.category) {
+                    content += '<div class="category" style="color: #ffaa44; font-size: 0.9rem; margin-bottom: 0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
+                }
+                
+                // Add notes or default message
+                if (hit.notes && hit.notes.trim()) {
+                    content += '<div class="notes">' + escapeHtml(hit.notes) + '</div>';
+                } else {
+                    content += '<div class="notes" style="color: #888; font-style: italic;">No additional details available</div>';
+                }
+                
+                // Add image if available
+                if (hit.image && hit.image.trim()) {
+                    content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
+                }
+                
+                tooltip.innerHTML = content;
                 
                 // Better positioning relative to container
                 const containerRect = container.getBoundingClientRect();
@@ -1083,6 +1111,84 @@ function logCanvasInfo(prefix, x, y) {
             }
         });
         container.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
+        
+        // Add click-to-toggle tooltip functionality
+        let lastClickedPin = null;
+        let tooltipVisible = false;
+        
+        container.addEventListener('click', (e) => {
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const hit = pickNearestPin(mx, my);
+            
+            if (hit) {
+                // Toggle tooltip on click
+                if (lastClickedPin === hit && tooltipVisible) {
+                    tooltip.style.display = 'none';
+                    tooltipVisible = false;
+                    lastClickedPin = null;
+                } else {
+                    // Show tooltip
+                    tooltip.style.display = '';
+                    
+                    // Build tooltip content
+                    let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
+                    
+                    // Add category info if available
+                    if (hit.category) {
+                        content += '<div class="category" style="color: #ffaa44; font-size: 0.9rem; margin-bottom: 0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
+                    }
+                    
+                    // Add notes or default message
+                    if (hit.notes && hit.notes.trim()) {
+                        content += '<div class="notes">' + escapeHtml(hit.notes) + '</div>';
+                    } else {
+                        content += '<div class="notes" style="color: #888; font-style: italic;">No additional details available</div>';
+                    }
+                    
+                    // Add image if available
+                    if (hit.image && hit.image.trim()) {
+                        content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
+                    }
+                    
+                    tooltip.innerHTML = content;
+                    
+                    // Position tooltip
+                    const containerRect = container.getBoundingClientRect();
+                    const cx = e.clientX - containerRect.left;
+                    const cy = e.clientY - containerRect.top;
+                    
+                    let tooltipX = cx;
+                    let tooltipY = cy - 10;
+                    
+                    const tooltipWidth = 320;
+                    const tooltipHeight = 200;
+                    
+                    if (tooltipX + tooltipWidth/2 > containerRect.width) {
+                        tooltipX = containerRect.width - tooltipWidth/2;
+                    }
+                    if (tooltipX - tooltipWidth/2 < 0) {
+                        tooltipX = tooltipWidth/2;
+                    }
+                    if (tooltipY - tooltipHeight < 0) {
+                        tooltipY = cy + 20;
+                    }
+                    
+                    tooltip.style.left = tooltipX + 'px';
+                    tooltip.style.top = tooltipY + 'px';
+                    
+                    tooltipVisible = true;
+                    lastClickedPin = hit;
+                }
+            } else {
+                // Clicked away from pins, hide tooltip
+                tooltip.style.display = 'none';
+                tooltipVisible = false;
+                lastClickedPin = null;
+            }
+        });
     });
 })();
 
