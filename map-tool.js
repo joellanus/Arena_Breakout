@@ -26,6 +26,8 @@ let baseCategories = [];
 let visibleBaseCategories = new Set();
 let baseBuildings = [];
 let showBuildings = true;
+let draftBuildings = [];
+let authorAddingBuilding = false;
 
 // Authoring state
 let authorMode = false;
@@ -69,6 +71,8 @@ function drawClickMarkers() {
         const catSel = document.getElementById('authorCategory');
         const exportBtn = document.getElementById('exportBasePinsBtn');
         const clearDraftBtn = document.getElementById('clearDraftPinsBtn');
+        const addBuildingBtn = document.getElementById('addBuildingLabelBtn');
+        const clearDraftBuildingsBtn = document.getElementById('clearDraftBuildingsBtn');
         if (toggle) {
             toggle.addEventListener('change', () => {
                 authorMode = !!toggle.checked;
@@ -88,6 +92,20 @@ function drawClickMarkers() {
                     updateDraftCounter();
                     renderCanvas();
                 }
+            });
+        }
+        if (addBuildingBtn) {
+            addBuildingBtn.addEventListener('click', () => {
+                if (!authorMode) { alert('Enable Author Mode first.'); return; }
+                authorAddingBuilding = true;
+                setTool('cursor');
+                alert('Click on the map to place a building label.');
+            });
+        }
+        if (clearDraftBuildingsBtn) {
+            clearDraftBuildingsBtn.addEventListener('click', () => {
+                if (draftBuildings.length === 0) return;
+                if (confirm('Clear draft building labels?')) { draftBuildings = []; renderCanvas(); }
             });
         }
     });
@@ -402,6 +420,13 @@ function handleMouseDown(e) {
         addPin(x, y);
         // Auto switch back to cursor to allow hover/click on pins
         setTool('cursor');
+    } else if (authorMode && authorAddingBuilding) {
+        const name = prompt('Building name:','');
+        if (name && name.trim()) {
+            draftBuildings.push({ x, y, name: name.trim() });
+            renderCanvas();
+        }
+        authorAddingBuilding = false;
     } else if (currentTool === 'draw' || currentTool === 'erase') {
         logCanvasInfo('click-draw-start', x, y);
         isDrawing = true;
@@ -599,10 +624,10 @@ function renderCanvas() {
     ctx.strokeRect(20, 20, 80, 80);
     ctx.restore();
 
-    // Draw base pins (shipped)
-    drawBasePins();
     // Draw building labels (shipped)
     drawBuildings();
+    // Draw base pins (shipped)
+    drawBasePins();
     
     // Draw all drawing strokes
     drawingHistory.forEach(drawing => {
@@ -658,6 +683,7 @@ function renderCanvas() {
     });
     // Finally draw any draft base pins above everything
     drawDraftBasePinsOnTop();
+    drawDraftBuildingsOnTop();
     drawClickMarkers();
     updateDraftCounter(); // Update counter after rendering
 }
@@ -763,6 +789,27 @@ function drawDraftBasePinsOnTop() {
             ctx.fillText(pin.label, pin.x + 20, pin.y + 6);
         }
     });
+}
+
+// Draw draft buildings (authoring)
+function drawDraftBuildingsOnTop() {
+    if (!draftBuildings || draftBuildings.length === 0) return;
+    ctx.save();
+    ctx.font = 'bold 18px Segoe UI, Roboto, Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    draftBuildings.forEach(b => {
+        const name = b.name || '';
+        if (!name) return;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        for (let dx=-2; dx<=2; dx++) for (let dy=-2; dy<=2; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            ctx.fillText(name, b.x+dx, b.y+dy);
+        }
+        ctx.fillStyle = '#ffc266';
+        ctx.fillText(name, b.x, b.y);
+    });
+    ctx.restore();
 }
 
 // Zoom functions
@@ -1057,7 +1104,7 @@ async function exportBasePinsJSON() {
             map: selectedMap,
             image: `assets/maps/${getMapSlug(selectedMap)}.png`,
             categories: Array.from(usedCats),
-            buildings: baseBuildings || [],
+            buildings: (baseBuildings || []).concat(draftBuildings || []),
             basePins: merged
         };
         // Request folder: ask for the project root (containing index.html)
@@ -1085,7 +1132,9 @@ async function exportBasePinsJSON() {
         alert('Exported base pins to assets/maps/data/' + fileName + '\nCommit and push to ship these to everyone.');
         // Replace in-memory basePins with merged and clear draft
         basePins = merged;
+        baseBuildings = payload.buildings;
         draftBasePins = [];
+        draftBuildings = [];
         renderCanvas();
     } catch (err) {
         console.error(err);
