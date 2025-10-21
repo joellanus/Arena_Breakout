@@ -435,6 +435,23 @@ function loadBaseDataForSelectedMap() {
     fetch(url, { cache: 'no-store' }).then(r=>r.ok?r.json():null).then(data=>{ if (data) { applyData(data); try{ localStorage.setItem(getShippedDataKey(), JSON.stringify(data)); }catch(_){} return; } try{ const cached=localStorage.getItem(getShippedDataKey()); if(cached){ const parsed=JSON.parse(cached); if(applyData(parsed)) return; } }catch(_){} console.warn('No base data found for', slug); }).catch(()=>{ try{ const cached=localStorage.getItem(getShippedDataKey()); if(cached){ const parsed=JSON.parse(cached); applyData(parsed); } }catch(_){} });
 }
 
+// Layer toggle chips
+(function wireLayerToggleChips(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const bar = document.getElementById('layerPresetBar'); if (!bar) return;
+        const getVisKey = () => 'mapTool:visibleCats:' + selectedMap;
+        const sync = () => { renderCanvas(); };
+        bar.addEventListener('click', (e) => {
+            const b = e.target.closest('button'); if (!b) return;
+            if (b.hasAttribute('data-toggle-buildings')) { showBuildings = !showBuildings; sync(); return; }
+            const cat = b.getAttribute('data-toggle'); if (!cat) return;
+            if (visibleBaseCategories.has(cat)) visibleBaseCategories.delete(cat); else visibleBaseCategories.add(cat);
+            localStorage.setItem(getVisKey(), JSON.stringify(Array.from(visibleBaseCategories)));
+            sync();
+        });
+    });
+})();
+
 // Tooltip hover for pins (always on hover or click)
 (function wirePinTooltip(){
     document.addEventListener('DOMContentLoaded', () => {
@@ -452,8 +469,8 @@ function loadBaseDataForSelectedMap() {
         const buildTooltip = (hit) => {
             let content = '<div class="title">' + escapeHtml(hit.title) + '</div>';
             if (hit.category) content += '<div class="category" style="color:#ffaa44; font-size:0.9rem; margin-bottom:0.5rem;">📌 ' + escapeHtml(hit.category) + '</div>';
-            const size = parseInt(hit.noteSize || 14, 10);
-            if (hit.notes && String(hit.notes).trim()) content += `<div class=\"notes\" style=\"font-size:${size}px\">` + escapeHtml(hit.notes) + '</div>'; else content += '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>';
+            const size = parseInt(hit.noteSize || 16, 10); // slightly larger default for readability
+            if (hit.notes && String(hit.notes).trim()) content += `<div class=\"notes\" style=\"font-size:${size}px; max-width: 420px\">` + escapeHtml(hit.notes) + '</div>'; else content += '<div class="notes" style="color:#888; font-style:italic;">No additional details available</div>';
             if (hit.image && String(hit.image).trim()) content += '<img class="preview" src="' + hit.image + '" alt="preview"/>';
             return content;
         };

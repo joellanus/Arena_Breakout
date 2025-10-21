@@ -291,14 +291,12 @@
                         <h3 style="color: #44ff44; text-shadow: 0 0 8px rgba(68, 255, 68, 0.3);">🧭 Base Layers</h3>
                         <p style="color: #88cc88; font-size: 0.85rem; margin-bottom: 0.75rem;">Toggle visibility of shipped map data</p>
                         <div id="layerPresetBar" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
-                            <button class="tab-btn" data-preset="all" style="padding:0.4rem 0.8rem;">Show All</button>
-                            <button class="tab-btn" data-preset="none" style="padding:0.4rem 0.8rem; background:#1a1a1a; border-color:#333;">Hide All</button>
-                            <button class="tab-btn" data-preset="keys" style="padding:0.4rem 0.8rem;">🔑 Keys</button>
-                            <button class="tab-btn" data-preset="spawns" style="padding:0.4rem 0.8rem;">📍 Spawns</button>
-                            <button class="tab-btn" data-preset="extracts" style="padding:0.4rem 0.8rem;">🚪 Extracts</button>
-                            <button class="tab-btn" data-preset="buildings" style="padding:0.4rem 0.8rem;">🏢 Buildings</button>
+                            <button class="tab-btn" data-toggle="Keys" style="padding:0.4rem 0.8rem;">🔑 Keys</button>
+                            <button class="tab-btn" data-toggle="Spawns" style="padding:0.4rem 0.8rem;">📍 Spawns</button>
+                            <button class="tab-btn" data-toggle="Extracts" style="padding:0.4rem 0.8rem;">🚪 Extracts</button>
+                            <button class="tab-btn" data-toggle-buildings="true" style="padding:0.4rem 0.8rem;">🏢 Buildings</button>
                         </div>
-                        <div id="baseLayerToggles"></div>
+                        <div id="baseLayerToggles" style="display:none;"></div>
                     </div>
 
                     <!-- Drawing Tools (hidden; use right-click menu) -->
