@@ -362,6 +362,8 @@ function setMarkerType(a, b, c) {
 // Mouse event handlers
 function handleMouseDown(e) {
     if (!mapImage) return;
+    // Prevent bubbling to container listener which re-triggers pin/draw logic
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (canvas.width / rect.width);
@@ -389,6 +391,8 @@ function handleMouseDown(e) {
 
 function handleMouseMove(e) {
     if (!mapImage) return;
+    // Prevent bubbling to container listener which can duplicate drawing
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     if (isPanning) {
         const dx = e.clientX - panStart.x;
         const dy = e.clientY - panStart.y;
@@ -415,7 +419,9 @@ function handleMouseMove(e) {
     }, 750);
 }
 
-function handleMouseUp() {
+function handleMouseUp(e) {
+    // Prevent bubbling to container listener which can double-save/end draws
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     if (isPanning) {
         isPanning = false;
         return;

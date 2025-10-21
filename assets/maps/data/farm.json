@@ -1,6 +1,23 @@
 {
   "map": "Farm",
   "image": "assets/maps/farm.png",
-  "categories": ["Keys", "Spawns", "Extracts"],
-  "basePins": []
+  "categories": [
+    "Keys",
+    "Spawns",
+    "Extracts"
+  ],
+  "basePins": [
+    {
+      "x": 1095.400651465798,
+      "y": 724.1830842691661,
+      "category": "Keys",
+      "label": "test"
+    },
+    {
+      "x": 1095.400651465798,
+      "y": 724.1830842691661,
+      "category": "Keys",
+      "label": "test"
+    }
+  ]
 }
