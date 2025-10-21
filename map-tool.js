@@ -516,3 +516,122 @@ function loadBaseDataForSelectedMap() {
     });
 })();
 
+// Editor/Inspector wiring
+(function wireEditorInspector(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const editor = document.getElementById('pinEditor');
+        const peTitle = document.getElementById('peTitle');
+        const peNotes = document.getElementById('peNotes');
+        const peLabelSize = document.getElementById('peLabelSize');
+        const peNoteSize = document.getElementById('peNoteSize');
+        const peImage = document.getElementById('peImage');
+        const peAttach = document.getElementById('peAttach');
+        const peSave = document.getElementById('peSave');
+        const peCancel = document.getElementById('peCancel');
+        const inspector = document.getElementById('pinInspector');
+        const piTitle = document.getElementById('piTitle');
+        const piMeta = document.getElementById('piMeta');
+        const piEdit = document.getElementById('piEdit');
+        const piMove = document.getElementById('piMove');
+        const piDelete = document.getElementById('piDelete');
+        if (!editor || !inspector) return;
+
+        let currentTarget = null; // {src, i, p}
+
+        function openEditor(target) {
+            currentTarget = target;
+            const p = target.p;
+            peTitle.value = p.label || p.type || '';
+            peNotes.value = p.notes || p.note || '';
+            peLabelSize.value = p.labelSize || 12;
+            peNoteSize.value = p.noteSize || 16;
+            peImage.value = p.image || '';
+            editor.style.display = 'block';
+            inspector.style.display = 'none';
+            peTitle.focus();
+        }
+        function closeEditor() { editor.style.display = 'none'; }
+        function openInspector(target) {
+            currentTarget = target;
+            const p = target.p; const cat = p.category || p.type || 'Pin';
+            piTitle.textContent = p.label || p.type || 'Pin';
+            piMeta.textContent = `${cat} • label ${p.labelSize||12}px • note ${p.noteSize||16}px`;
+            inspector.style.display = 'block';
+        }
+        function closeInspector() { inspector.style.display = 'none'; }
+
+        peAttach.addEventListener('click', () => {
+            const attachBtn = document.getElementById('attachImageBtn');
+            if (attachBtn) attachBtn.click();
+        });
+        peCancel.addEventListener('click', () => { closeEditor(); });
+        peSave.addEventListener('click', async () => {
+            if (!currentTarget) return;
+            const p = currentTarget.p;
+            const newTitle = peTitle.value || '';
+            const newNotes = peNotes.value || '';
+            const ls = parseInt(peLabelSize.value||12,10);
+            const ns = parseInt(peNoteSize.value||16,10);
+            const img = peImage.value || '';
+            if (currentTarget.src==='user') { p.type = newTitle || p.type; p.note = newNotes; }
+            else { p.label = newTitle; p.notes = newNotes; p.image = img; }
+            p.labelSize = Math.max(10, Math.min(48, ls));
+            p.noteSize = Math.max(10, Math.min(48, ns));
+            closeEditor(); renderCanvas(); await autoSave();
+        });
+
+        // Connect inspector buttons
+        piEdit.addEventListener('click', () => { if (currentTarget) openEditor(currentTarget); });
+        piMove.addEventListener('click', async () => {
+            if (!currentTarget) return;
+            const tgt = currentTarget; currentTarget = null; closeInspector();
+            const rect = canvas.getBoundingClientRect();
+            let moving = true; alert('Click the new location.');
+            const onClick = async (ev) => { if (!moving) return; moving=false; const nx=(ev.clientX-rect.left)*(canvas.width/rect.width); const ny=(ev.clientY-rect.top)*(canvas.height/rect.height); tgt.p.x=nx; tgt.p.y=ny; renderCanvas(); await autoSave(); container.removeEventListener('click', onClick, true); };
+            const container = document.querySelector('.map-canvas-container');
+            container.addEventListener('click', onClick, true);
+        });
+        piDelete.addEventListener('click', async () => {
+            if (!currentTarget) return; const t=currentTarget; currentTarget=null; closeInspector();
+            if (t.src==='draft') draftBasePins.splice(t.i,1);
+            else if (t.src==='base') basePins.splice(t.i,1);
+            else if (t.src==='user') pins.splice(t.i,1);
+            renderCanvas(); await autoSave();
+        });
+
+        // Open inspector on left-click selection
+        const container = document.querySelector('.map-canvas-container');
+        if (container) {
+            container.addEventListener('click', (e) => {
+                // Reuse context hitTest
+                const rect = canvas.getBoundingClientRect();
+                const mx=(e.clientX-rect.left)*(canvas.width/rect.width); const my=(e.clientY-rect.top)*(canvas.height/rect.height);
+                const all=[]; (draftBasePins||[]).forEach((p,i)=>all.push({src:'draft',i,x:p.x,y:p.y,p})); (basePins||[]).forEach((p,i)=>all.push({src:'base',i,x:p.x,y:p.y,p})); (pins||[]).forEach((p,i)=>all.push({src:'user',i,x:p.x,y:p.y,p})); let best=null,bestD2=Infinity; all.forEach(it=>{ const dx=it.x-mx,dy=it.y-my; const d2=dx*dx+dy*dy; if(d2<bestD2){bestD2=d2; best=it;} });
+                if (best && bestD2 <= 36*36) openInspector(best); else closeInspector();
+            });
+        }
+
+        // Keyboard polish
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeEditor(); closeInspector(); }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (editor.style.display==='block') peSave.click(); }
+        });
+    });
+})();
+
+// Chip active styling sync
+(function syncChipActive(){
+    document.addEventListener('DOMContentLoaded', () => {
+        const bar = document.getElementById('layerPresetBar'); if (!bar) return;
+        const setActive = () => {
+            bar.querySelectorAll('button[data-toggle]').forEach(btn => {
+                const cat = btn.getAttribute('data-toggle');
+                btn.classList.toggle('active', visibleBaseCategories.has(cat));
+            });
+            const b = bar.querySelector('button[data-toggle-buildings]'); if (b) b.classList.toggle('active', !!showBuildings);
+        };
+        setActive();
+        bar.addEventListener('click', () => setTimeout(setActive, 0));
+    });
+})();
+

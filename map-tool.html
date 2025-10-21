@@ -431,6 +431,43 @@
 
                     <!-- Hover tooltip for pins -->
                     <div id="pinTooltip" class="pin-tooltip" style="display:none;">Tooltip</div>
+
+                    <!-- Pin Editor Overlay -->
+                    <div id="pinEditor" class="pin-editor">
+                        <h4>Edit Pin</h4>
+                        <label>Title</label>
+                        <input type="text" id="peTitle" />
+                        <label>Notes</label>
+                        <textarea id="peNotes"></textarea>
+                        <div style="display:flex; gap:0.5rem;">
+                            <div style="flex:1;">
+                                <label>Label Size</label>
+                                <input type="number" id="peLabelSize" min="10" max="48" value="12" />
+                            </div>
+                            <div style="flex:1;">
+                                <label>Note Size</label>
+                                <input type="number" id="peNoteSize" min="10" max="48" value="16" />
+                            </div>
+                        </div>
+                        <label>Image URL (or attach below)</label>
+                        <input type="text" id="peImage" />
+                        <div class="actions">
+                            <button class="tab-btn" id="peAttach">Attach Image...</button>
+                            <button class="tab-btn" id="peSave">Save</button>
+                            <button class="tab-btn" id="peCancel" style="background:#1a1a1a; border-color:#333;">Cancel</button>
+                        </div>
+                    </div>
+
+                    <!-- Floating Inspector -->
+                    <div id="pinInspector" class="pin-inspector">
+                        <div class="title" id="piTitle">Title</div>
+                        <div class="meta" id="piMeta">Category • Size</div>
+                        <div class="btn-row">
+                            <button class="tab-btn" id="piEdit">✏️ Edit</button>
+                            <button class="tab-btn" id="piMove">↔️ Move</button>
+                            <button class="tab-btn" id="piDelete" style="background:#1a1a1a; border-color:#333;">🗑️ Delete</button>
+                        </div>
+                    </div>
                     
                     <!-- Context menu for pins (right-click) -->
                     <div id="pinContextMenu" style="display:none; position:absolute; z-index:30; background:#111; border:1px solid #333; border-radius:8px; padding:8px; box-shadow:0 10px 24px rgba(0,0,0,0.5); min-width:200px;">
