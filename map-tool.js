@@ -33,7 +33,7 @@ let authorAddingBuilding = false;
 let authorMode = false;
 let draftBasePins = [];
 
-// Dev mode flag (not persisted by default)
+// Dev mode flag (no longer gating authoring UI)
 let devMode = false;
 
 // Debug: temporary click markers for authoring visibility
@@ -709,7 +709,7 @@ function renderCanvas() {
 
 // Draw base pins (shipped)
 function drawBasePins() {
-    // Always show base pins when they exist and categories are visible
+    // Show base pins when they exist and categories are visible
     if (!basePins || basePins.length === 0) return;
     const categoryColor = {
         'Keys': '#ffaa00',
