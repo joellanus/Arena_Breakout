@@ -296,7 +296,7 @@
                             <button class="tab-btn" data-toggle="Extracts" style="padding:0.4rem 0.8rem;">🚪 Extracts</button>
                             <button class="tab-btn" data-toggle-buildings="true" style="padding:0.4rem 0.8rem;">🏢 Buildings</button>
                         </div>
-                        <div id="baseLayerToggles" style="display:none;"></div>
+                        <div id="baseLayerToggles" style="display:block;"></div>
                     </div>
 
                     <!-- Drawing Tools (hidden; use right-click menu) -->
@@ -359,12 +359,9 @@
                     <!-- Save/Load -->
                     <div class="tool-section">
                         <h3>💾 Save/Load</h3>
-                        <button class="tool-button" onclick="saveMapData()">
-                            💾 Save Map
-                        </button>
-                        <button class="tool-button" onclick="exportMapImage()">
-                            📥 Export as Image
-                        </button>
+                         <button class="tool-button" onclick="saveMapData()">💾 Save Map</button>
+                         <button class="tool-button" id="exportJsonBtn">📤 Export Shipped Data (JSON)</button>
+                         <button class="tool-button" onclick="exportMapImage()">📥 Export as Image</button>
                     </div>
 
                     <!-- Author Mode (hidden; always-on editing via context menu) -->

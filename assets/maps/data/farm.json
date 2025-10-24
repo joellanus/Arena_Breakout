@@ -5,68 +5,21 @@
     "Keys",
     "Spawns",
     "Extracts",
-    "Misc",
     "Buildings"
   ],
   "buildings": [],
   "basePins": [
     {
-      "x": 1472.2345177816883,
-      "y": 67.33223619471816,
+      "x": 1455.3811074918567,
+      "y": 99.17574498187284,
       "category": "Buildings",
       "label": "Small Hall",
-      "notes": "",
-      "image": "",
-      "labelSize": 30,
-      "noteSize": 16,
-      "isBuilding": true
-    },
-    {
-      "x": 2630.406262934043,
-      "y": 278.6218714873613,
-      "category": "Buildings",
-      "label": "Main Warehouse",
-      "notes": "",
-      "image": "",
-      "labelSize": 30,
-      "noteSize": 16,
-      "isBuilding": true
-    },
-    {
-      "x": 270.2400579478932,
-      "y": 918.7512110035914,
-      "category": "Buildings",
-      "label": "Grain Terminal",
-      "notes": "",
-      "image": "",
-      "labelSize": 28,
-      "noteSize": 16,
-      "isBuilding": true,
-      "id": 1761323615091064
-    },
-    {
-      "x": 1378.328700607173,
-      "y": 1375.7628665995308,
-      "category": "Buildings",
-      "label": "Motel",
       "notes": "",
       "image": "",
       "labelSize": 34,
       "noteSize": 16,
       "isBuilding": true,
-      "id": 1761323636905079
-    },
-    {
-      "x": 741.3342407733779,
-      "y": 1364.8071077325048,
-      "category": "Buildings",
-      "label": "Cemetary",
-      "notes": "",
-      "image": "",
-      "labelSize": 30,
-      "noteSize": 16,
-      "isBuilding": true,
-      "id": 1761323651195589
+      "id": 1761330123672447
     }
   ]
 }

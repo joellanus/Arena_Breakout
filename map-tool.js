@@ -158,7 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
     ctx = canvas.getContext('2d');
     
     // Set up file upload
-    document.getElementById('mapUpload').addEventListener('change', handleMapUpload);
+    const mu = document.getElementById('mapUpload'); if (mu) mu.addEventListener('change', handleMapUpload);
+    const exportBtnJson = document.getElementById('exportJsonBtn'); if (exportBtnJson) exportBtnJson.addEventListener('click', () => { exportBasePinsJSON().catch(err => alert('Export failed: '+err?.message)); });
     // Ensure final state persists on tab close/refresh
     window.addEventListener('beforeunload', () => { try { saveMapData(); } catch(_) {} });
     
