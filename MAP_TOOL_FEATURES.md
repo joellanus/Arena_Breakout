@@ -10,14 +10,11 @@
 - **Smooth Lines** - Professional-looking strokes
 
 ### 📍 Pin System
-7 pre-configured pin types:
-1. **⚠️ Danger Zone** (Red) - Enemy positions, dangerous areas
-2. **💎 Loot** (Green) - Item locations, resources
-3. **🚁 Spawn Point** (Blue) - Team spawn locations
-4. **🎯 Objective** (Yellow) - Mission objectives
-5. **🛡️ Cover** (Purple) - Good cover positions
-6. **👁️ Vantage Point** (Cyan) - Sniper spots, overwatch
-7. **⭐ Custom** (White) - Anything else!
+4 primary categories + building labels:
+1. **🔑 Keys** (Yellow)
+2. **⬇️ Spawns** (Green)
+3. **⬆️ Extracts** (Cyan)
+4. **🏢 Buildings** (text-only labels)
 
 Each pin can have:
 - Custom note/description
@@ -32,10 +29,10 @@ Each pin can have:
 - Precise control
 
 ### 💾 Save/Load System
-- **Auto-save** - Everything saves as you work
+- **Auto-save** - Everything saves as you work (pins, drawings, draft base pins/buildings)
 - **Persistent** - Survives browser close/refresh
 - **Local Storage** - Nothing sent to servers
-- **Manual Save** - Ctrl+S for peace of mind
+- **Export JSON** - If a Project Folder is set, base/draft data is written to `assets/maps/data/<map>.json`
 - **Undo** - Ctrl+Z to undo last stroke
 
 ### 📥 Export

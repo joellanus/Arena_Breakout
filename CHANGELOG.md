@@ -30,3 +30,15 @@
 - Hover/left-click pin details with larger text
 - Simplified layer controls to four toggle chips
 - Persist project folder selection in IndexedDB; no repeated prompts
+
+## 1.2.5 (in dev)
+- Hover details: robust canvas-space hit test; click to lock
+- User pins use emoji icons: 🔑 Keys, ⬇️ Spawns, ⬆️ Extracts
+- Buildings render text-only labels (no dot); Buildings toggle controls all
+- Layer chip state sync after render; fewer "all black" glitches
+- Context menu simplified: Add Keys/Spawns/Extracts/Building Label only
+- Size +/− actions keep menu open; clamp 10–48px
+- Auto-save on every change and on unload; local restore of drafts
+- Draft base pins and building labels persist in localStorage
+- Image attach from editor writes to the edited pin; no extra prompts
+- Quiet project folder handling; export runs only if already set

@@ -4,45 +4,69 @@
   "categories": [
     "Keys",
     "Spawns",
-    "Extracts"
+    "Extracts",
+    "Misc",
+    "Buildings"
   ],
-  "buildings": [
-    { "x": 950, "y": 520, "name": "Main Office" },
-    { "x": 820, "y": 620, "name": "Barn" },
-    { "x": 1200, "y": 780, "name": "Storage" }
-  ],
+  "buildings": [],
   "basePins": [
     {
-      "x": 1095.400651465798,
-      "y": 724.1830842691661,
-      "category": "Keys",
-      "label": "Office Key",
-      "notes": "Located in the main office building. Check desk drawers and filing cabinets.",
-      "image": ""
+      "x": 1472.2345177816883,
+      "y": 67.33223619471816,
+      "category": "Buildings",
+      "label": "Small Hall",
+      "notes": "",
+      "image": "",
+      "labelSize": 30,
+      "noteSize": 16,
+      "isBuilding": true
     },
     {
-      "x": 1200,
-      "y": 800,
-      "category": "Keys", 
-      "label": "Storage Room Key",
-      "notes": "Found near the storage area. Often spawns on shelves or in boxes.",
-      "image": ""
+      "x": 2630.406262934043,
+      "y": 278.6218714873613,
+      "category": "Buildings",
+      "label": "Main Warehouse",
+      "notes": "",
+      "image": "",
+      "labelSize": 30,
+      "noteSize": 16,
+      "isBuilding": true
     },
     {
-      "x": 800,
-      "y": 600,
-      "category": "Spawns",
-      "label": "Player Spawn A",
-      "notes": "Main spawn point for players. High traffic area.",
-      "image": ""
+      "x": 270.2400579478932,
+      "y": 918.7512110035914,
+      "category": "Buildings",
+      "label": "Grain Terminal",
+      "notes": "",
+      "image": "",
+      "labelSize": 28,
+      "noteSize": 16,
+      "isBuilding": true,
+      "id": 1761323615091064
     },
     {
-      "x": 1000,
-      "y": 500,
-      "category": "Extracts",
-      "label": "Emergency Exit",
-      "notes": "Safe extraction point. Requires no key. Always available.",
-      "image": ""
+      "x": 1378.328700607173,
+      "y": 1375.7628665995308,
+      "category": "Buildings",
+      "label": "Motel",
+      "notes": "",
+      "image": "",
+      "labelSize": 34,
+      "noteSize": 16,
+      "isBuilding": true,
+      "id": 1761323636905079
+    },
+    {
+      "x": 741.3342407733779,
+      "y": 1364.8071077325048,
+      "category": "Buildings",
+      "label": "Cemetary",
+      "notes": "",
+      "image": "",
+      "labelSize": 30,
+      "noteSize": 16,
+      "isBuilding": true,
+      "id": 1761323651195589
     }
   ]
 }

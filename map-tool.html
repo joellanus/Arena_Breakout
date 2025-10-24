@@ -350,12 +350,10 @@
                         <input type="range" id="drawOpacity" class="opacity-slider" min="10" max="100" value="80">
                     </div>
 
-                    <!-- Pins List -->
-                    <div class="tool-section">
+                    <!-- Pins List (hidden; we render all pin titles on map) -->
+                    <div class="tool-section" style="display:none;">
                         <h3>📍 Pins (<span id="pinCount">0</span>)</h3>
-                        <div class="pins-list" id="pinsList">
-                            <p style="color: #666; font-size: 0.85rem; text-align: center;">No pins yet</p>
-                        </div>
+                        <div class="pins-list" id="pinsList"></div>
                     </div>
 
                     <!-- Save/Load -->
@@ -475,9 +473,7 @@
                         <button data-act="add-keys" class="tab-btn" style="width:100%;">🔑 Add Keys Pin</button>
                         <button data-act="add-spawns" class="tab-btn" style="width:100%;">📍 Add Spawn Pin</button>
                         <button data-act="add-extracts" class="tab-btn" style="width:100%;">🚪 Add Extract Pin</button>
-                        <button data-act="add-loot" class="tab-btn" style="width:100%;">💎 Add Loot Pin</button>
-                        <button data-act="add-vantage" class="tab-btn" style="width:100%;">👁️ Add Vantage Pin</button>
-                        <button data-act="add-danger" class="tab-btn" style="width:100%;">⚠️ Add Danger Pin</button>
+                        
                         <button data-act="add-building" class="tab-btn" style="width:100%;">🏢 Add Building Label</button>
                         <div style="height:1px; background:#333; margin:8px 0;"></div>
                         <button data-act="edit" class="tab-btn" style="width:100%;">✏️ Edit Title/Notes</button>

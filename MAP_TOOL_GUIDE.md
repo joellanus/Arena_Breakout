@@ -43,7 +43,7 @@ Your personal tactical map planner for Arena Breakout!
 ## Tools
 
 ### 📍 Add/Edit Pins
-- Right-click empty space → choose a pin category (Keys, Spawns, Extracts, Loot, Vantage, Danger)
+- Right-click empty space → choose a pin category (Keys, Spawns, Extracts, Building Label)
 - Left-click a pin to open the Inspector → Edit to change title/notes, sizes, and image
 - Right-click a pin to Move or Delete
 
@@ -88,11 +88,12 @@ Your personal tactical map planner for Arena Breakout!
 - Delete individual pins with the Delete button
 - See pin count at the top
 
-**Pin Notes:**
+**Pin Notes & Images:**
 - Add tactical information: "Sniper watches this spot"
 - Team coordination: "Alpha team takes this route"
 - Reminders: "Check for loot here"
 - Warnings: "Always check corners here"
+- Use Edit to attach an image to a pin (stored under `assets/maps/images/` if a Project Folder is set)
 
 ## Drawing Settings
 

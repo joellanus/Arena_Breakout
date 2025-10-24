@@ -57,7 +57,8 @@ Troubleshooting updates:
 - Editing is always on: right‑click the map (empty) to add a pin/label; right‑click a pin to Edit/Move/Delete or adjust text sizes
 - Hover/left‑click a pin to view title, notes, and image; use the inline editor to make changes
 - Toggle Base Layers via chips: Keys, Spawns, Extracts, Buildings
-- Auto‑save writes to `assets/maps/data/<map>.json`; set the Project Folder once in Settings
+- Auto‑save persists your working state locally (pins, drawings, draft base pins/buildings)
+- If a Project Folder is set, exports to `assets/maps/data/<map>.json` run in the background
 
 ## Building and Publishing a Release
 
@@ -89,7 +90,7 @@ Notes:
 - Left-click: inspect pins (hover also shows details)
 - Right-click: context menu to Add/Edit/Move/Delete pins and building labels; adjust note/label size
 - Layers: use the four chips to toggle Keys, Spawns, Extracts, and Buildings
-- Auto-save: changes persist to `assets/maps/data/<map>.json` immediately (select the Project Folder once under Settings)
+- Auto-save: changes are saved continuously; exporting JSON runs only if a Project Folder is set under Settings
 
 ## Map Tool Quick Tips
 
