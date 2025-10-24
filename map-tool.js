@@ -199,6 +199,50 @@ document.addEventListener('DOMContentLoaded', function() {
             loadMapData();
         });
     }
+
+	// Layer preset bar (chips) wiring
+	(function wireLayerPresetBar(){
+		const bar = document.getElementById('layerPresetBar');
+		if (!bar) return;
+		const visKey = () => 'mapTool:visibleCats:' + selectedMap;
+		const showBuildingsKey = () => 'mapTool:showBuildings:' + selectedMap;
+		function updateChipsActive() {
+			bar.querySelectorAll('button[data-toggle]').forEach(btn => {
+				const cat = btn.getAttribute('data-toggle');
+				if (visibleBaseCategories.has(cat)) btn.classList.add('active');
+				else btn.classList.remove('active');
+			});
+			const b = bar.querySelector('button[data-toggle-buildings="true"]');
+			if (b) {
+				if (showBuildings) b.classList.add('active'); else b.classList.remove('active');
+			}
+		}
+		bar.addEventListener('click', (e) => {
+			const t = e.target.closest('button');
+			if (!t) return;
+			if (t.hasAttribute('data-toggle')) {
+				const cat = t.getAttribute('data-toggle');
+				if (visibleBaseCategories.has(cat)) visibleBaseCategories.delete(cat); else visibleBaseCategories.add(cat);
+				try { localStorage.setItem(visKey(), JSON.stringify(Array.from(visibleBaseCategories))); } catch(_) {}
+				renderCanvas();
+				updateChipsActive();
+				return;
+			}
+			if (t.hasAttribute('data-toggle-buildings')) {
+				showBuildings = !showBuildings;
+				try { localStorage.setItem(showBuildingsKey(), JSON.stringify(showBuildings)); } catch(_) {}
+				renderCanvas();
+				updateChipsActive();
+				return;
+			}
+		});
+		// Initialize from saved
+		try {
+			const savedShow = localStorage.getItem(showBuildingsKey());
+			if (savedShow !== null) showBuildings = JSON.parse(savedShow);
+		} catch(_) {}
+		updateChipsActive();
+	})();
     
     // Load base shipped data and saved data
     loadBaseDataForSelectedMap();

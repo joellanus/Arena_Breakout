@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2
+- Cursor tool flow: hover/click only in cursor mode; auto-return after adding a pin
+- Reliable tooltips under zoom/pan; click-to-toggle sticky details
+- Base Layers panel always visible; new 🏢 Building Names layer
+- Building labels: authoring controls (add/clear), export merges into JSON
+- UI polish: presets row (Keys/Spawns/Extracts/Buildings), context menu actions
+
 ## 1.2.4
 - Updater: improved error messages, user-gesture fix (picker first), CDN fallback
 - Authoring: auto-switch to Pin tool when enabling Author Mode
